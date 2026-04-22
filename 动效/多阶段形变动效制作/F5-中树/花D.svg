@@ -1,0 +1,27 @@
+<svg width="73" height="59" viewBox="0 0 73 59" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g filter="url(#filter0_n_801_1810)">
+<path d="M52.9542 11.6058C48.5541 -3.99415 36.1208 -0.560819 30.4542 3.10585C14.4541 -3.69415 11.1208 7.27251 11.4542 13.6058C5.45416 17.2058 6.95416 23.4392 8.45415 26.1058C-7.54585 37.7058 2.78749 46.2725 9.95415 49.1058C12.3542 54.3058 18.6208 52.6058 21.4542 51.1058C24.6542 59.9058 33.4542 57.1058 37.4542 54.6058C44.6542 62.6058 53.4542 56.6058 56.9542 52.6058C81.3541 37.0058 71.4541 27.7725 63.4542 25.1058C69.0542 11.1058 58.7875 10.2725 52.9542 11.6058Z" fill="url(#paint0_linear_801_1810)"/>
+</g>
+<defs>
+<filter id="filter0_n_801_1810" x="0" y="0" width="72.387" height="58.5492" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feTurbulence type="fractalNoise" baseFrequency="10 10" stitchTiles="stitch" numOctaves="3" result="noise" seed="3546" />
+<feColorMatrix in="noise" type="luminanceToAlpha" result="alphaNoise" />
+<feComponentTransfer in="alphaNoise" result="coloredNoise1">
+<feFuncA type="discrete" tableValues="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "/>
+</feComponentTransfer>
+<feComposite operator="in" in2="shape" in="coloredNoise1" result="noise1Clipped" />
+<feFlood flood-color="rgba(154, 70, 70, 0.25)" result="color1Flood" />
+<feComposite operator="in" in2="noise1Clipped" in="color1Flood" result="color1" />
+<feMerge result="effect1_noise_801_1810">
+<feMergeNode in="shape" />
+<feMergeNode in="color1" />
+</feMerge>
+</filter>
+<linearGradient id="paint0_linear_801_1810" x1="36.1935" y1="0" x2="36.1935" y2="58.5491" gradientUnits="userSpaceOnUse">
+<stop stop-color="#E4CBC3"/>
+<stop offset="1" stop-color="#C38584"/>
+</linearGradient>
+</defs>
+</svg>
