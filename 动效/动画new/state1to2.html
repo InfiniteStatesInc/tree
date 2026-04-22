@@ -36,7 +36,7 @@
 </head>
 <body>
 
-<svg class="stage" viewBox="-5 -10 120 120" preserveAspectRatio="xMidYMax meet">
+<svg class="stage" viewBox="-40 -10 150 120" preserveAspectRatio="xMidYMax meet">
   <defs>
     <linearGradient id="gT" x1="55" y1="80" x2="85" y2="115" gradientUnits="userSpaceOnUse">
       <stop stop-color="#7B5953"/><stop offset="1" stop-color="#977775"/>
@@ -113,7 +113,7 @@ const STATES = [
   null,
   { trunk: P_MOUND,  l1:{tx:0,ty:13,s:0,op:0}, l2:{tx:0, ty:13,s:0,op:0} },
   { trunk: P_TRUNK2, l1:{tx:0,ty:13,s:1,op:1}, l2:{tx:0, ty:13,s:1,op:1} },
-  { trunk: null,      l1:{tx:0,ty:0,s:1,op:1}, l2:{tx:42,ty:13,s:1,op:1} },
+  { trunk: null,      l1:{tx:-33,ty:0,s:1,op:1}, l2:{tx:9,ty:13,s:1,op:1} },
 ];
 
 // ═══════════════════════════════════════════════════
@@ -140,46 +140,46 @@ function buildSplitTrunk(t) {
   // Tip point — where degenerate segs collapse at t=0
   const tipX = 38, tipY = 46.87;
 
-  // ── Base endpoints ──
-  const bLx = lerp(13, 46, tMid);       // 13 → 46
-  const bRx = lerp(65, 98, tMid);       // 65 → 98
+  // ── Base endpoints (stage-3 x values shifted -33 to keep base center at x=39) ──
+  const bLx = 13;                        // FIXED: 13 → 13
+  const bRx = 65;                        // FIXED: 65 → 65
 
   // ── Seg 1: base-left → left-tip (left branch outer) ──
-  const s1c1x = lerp(35.8, 68.8, tMid);
-  const s1c1y = 103;                     // stays 103
-  const s1c2x = lerp(39.17, 53.5, tMid);
+  const s1c1x = lerp(35.8, 35.8, tMid);  // 68.8-33=35.8
+  const s1c1y = 103;
+  const s1c2x = lerp(39.17, 20.5, tMid); // 53.5-33=20.5
   const s1c2y = lerp(65.2, 61, tMid);
-  const ltX   = lerp(tipX, 32.5, tTop);  // 38 → 32.5
-  const ltY   = lerp(tipY, 25.5, tTop);  // 46.87 → 25.5
+  const ltX   = lerp(tipX, -0.5, tTop);  // 32.5-33=-0.5
+  const ltY   = lerp(tipY, 25.5, tTop);
 
   // ── Seg 2: left-tip → fork (degenerate at t=0) ──
-  const s2c1x = lerp(tipX, 56.5, tMid);
+  const s2c1x = lerp(tipX, 23.5, tMid);  // 56.5-33=23.5
   const s2c1y = lerp(tipY, 55.5, tMid);
-  const s2c2x = lerp(tipX, 56, tMid);
+  const s2c2x = lerp(tipX, 23, tMid);    // 56-33=23
   const s2c2y = lerp(tipY, 60.5, tMid);
-  const fX    = lerp(tipX, 64.5, tMid);  // 38 → 64.5
-  const fY    = lerp(tipY, 81, tMid);    // 46.87 → 81
+  const fX    = lerp(tipX, 31.5, tMid);  // 64.5-33=31.5
+  const fY    = lerp(tipY, 81, tMid);
 
   // ── Seg 3: fork → right-tip (degenerate at t=0) ──
-  const s3c1x = lerp(tipX, 64.5, tMid);  // = fX (stays at fork start)
+  const s3c1x = lerp(tipX, 31.5, tMid);  // = fX
   const s3c1y = lerp(tipY, 81, tMid);    // = fY
-  const s3c2x = lerp(tipX, 90.5, tTop);
+  const s3c2x = lerp(tipX, 57.5, tTop);  // 90.5-33=57.5
   const s3c2y = lerp(tipY, 18.5, tTop);
-  const rtX   = lerp(tipX, 82.5, tTop);  // 38 → 82.5
-  const rtY   = lerp(tipY, 42, tTop);    // 46.87 → 42
+  const rtX   = lerp(tipX, 49.5, tTop);  // 82.5-33=49.5
+  const rtY   = lerp(tipY, 42, tTop);
 
   // ── Seg 4: right-tip → right-mid ──
-  const s4c1x = lerp(40.4, 74.5, tMid);
+  const s4c1x = lerp(40.4, 41.5, tMid);  // 74.5-33=41.5
   const s4c1y = lerp(tipY, 65.5, tMid);
-  const s4c2x = lerp(40, 67.99, tMid);
+  const s4c2x = lerp(40, 34.99, tMid);   // 67.99-33=34.99
   const s4c2y = lerp(70.54, 81, tMid);
-  const rmX   = lerp(39.5, 72, tMid);
+  const rmX   = lerp(39.5, 39, tMid);    // 72-33=39
   const rmY   = lerp(82.37, 91, tMid);
 
   // ── Seg 5: right-mid → base-right ──
-  const s5c1x = lerp(39.1, 77.51, tMid);
+  const s5c1x = lerp(39.1, 44.51, tMid); // 77.51-33=44.51
   const s5c1y = lerp(99.17, 98.04, tMid);
-  const s5c2x = lerp(56.17, 91.94, tMid);
+  const s5c2x = lerp(56.17, 58.94, tMid);// 91.94-33=58.94
   const s5c2y = lerp(104.5, 104.66, tMid);
 
   return `M${bLx} 105 ` +
@@ -294,19 +294,21 @@ function animateStep(from, to, onDone) {
 
     // ── Leaves ──
     if (isGrow) {
-      // Pop in during last 55%
-      const lr1 = Math.max(0, (raw - 0.45) / 0.55);
-      const lr2 = Math.max(0, (raw - 0.52) / 0.48);
-      applyLeaf(g1, leaf1, { tx:stTo.l1.tx, ty:stTo.l1.ty, s:easeOutBack(lr1), op:Math.min(1,lr1*2.5) });
-      applyLeaf(g2, leaf2, { tx:stTo.l2.tx, ty:stTo.l2.ty, s:easeOutBack(lr2), op:Math.min(1,lr2*2.5) });
+      // Leaves appear only after trunk is mostly grown (last 20%)
+      const lr1 = Math.max(0, (raw - 0.78) / 0.22);
+      const lr2 = Math.max(0, (raw - 0.82) / 0.18);
+      applyLeaf(g1, leaf1, { tx:stTo.l1.tx, ty:stTo.l1.ty, s:easeOutBack(lr1), op:Math.min(1,lr1*3) });
+      applyLeaf(g2, leaf2, { tx:stTo.l2.tx, ty:stTo.l2.ty, s:easeOutBack(lr2), op:Math.min(1,lr2*3) });
     } else if (isShrink) {
-      const lr = Math.max(0, 1 - raw/0.5);
+      const lr = Math.max(0, 1 - raw/0.3);
       applyLeaf(g1, leaf1, { tx:stFrom.l1.tx, ty:stFrom.l1.ty, s:lr, op:lr });
       applyLeaf(g2, leaf2, { tx:stFrom.l2.tx, ty:stFrom.l2.ty, s:lr, op:lr });
     } else {
-      // 2↔3: smooth lerp
-      applyLeaf(g1, leaf1, lerpLeaf(stFrom.l1, stTo.l1, t));
-      applyLeaf(g2, leaf2, lerpLeaf(stFrom.l2, stTo.l2, t));
+      // 2↔3: leaves use EXACT same timing as trunk tips (tTop inside buildSplitTrunk)
+      // Trunk: t = easeInOutCubic(raw), then tTop = min(1, t * 1.18)
+      const tLeaf = Math.min(1, t * 1.18);
+      applyLeaf(g1, leaf1, lerpLeaf(stFrom.l1, stTo.l1, tLeaf));
+      applyLeaf(g2, leaf2, lerpLeaf(stFrom.l2, stTo.l2, tLeaf));
     }
 
     if (raw < 1) {
