@@ -162,47 +162,54 @@ function doGrowthTransition(fromIdx, toIdx) {
   return new Promise(resolve => {
     const fromEl = frames[fromIdx];
     const toEl = frames[toIdx];
-    const duration = 2200;
+    const duration = 2400;
 
+    const fromW = parseFloat(fromEl.style.width);
     const fromH = parseFloat(fromEl.style.height);
+    const toW = parseFloat(toEl.style.width);
     const toH = parseFloat(toEl.style.height);
-    const growRatio = toH / fromH;
 
-    // Prepare "to": visible but clipped to tiny ellipse at trunk base
+    // === KEY: ellipse starts at a size that ALREADY COVERS the "from" frame ===
+    // This way the new frame appears to continue from the old shape, not restart
+    const initRx = Math.min((fromW / toW) * 55, 50);  // initial horizontal radius %
+    const initRy = Math.min((fromH / toH) * 105, 95);  // initial vertical radius %
+    const finalRx = 110;
+    const finalRy = 125;
+
+    // Prepare "to": visible, clipped to the old frame's footprint
     toEl.style.opacity = '1';
-    toEl.style.clipPath = 'ellipse(5% 3% at 50% 100%)';
-    toEl.style.transform = `scaleY(${Math.max(0.85, 1/growRatio)}) scaleX(0.9)`;
-    toEl.offsetHeight; // force reflow
+    toEl.style.clipPath = `ellipse(${initRx}% ${initRy}% at 50% 100%)`;
+    toEl.style.transform = 'none';
+    toEl.offsetHeight;
 
     const startTime = performance.now();
 
     function tick(now) {
       const elapsed = now - startTime;
       const rawT = Math.min(elapsed / duration, 1);
+      const growT = easeOutCubic(rawT);
 
-      // === "From" frame: stretch up slightly, then fade ===
-      const stretchT = easeOutCubic(Math.min(rawT * 1.5, 1));
-      const maxStretch = Math.min(growRatio - 1, 0.3);
-      const fromScaleY = 1 + stretchT * maxStretch;
-      const fromFade = rawT < 0.5 ? 1 : Math.max(0, 1 - (rawT - 0.5) * 2.5);
-      fromEl.style.transform = `scaleY(${fromScaleY})`;
+      // === "From" frame ===
+      // Stays fully visible in the first 40%, then fades as "to" covers it
+      // Slight upward stretch to bridge the size gap
+      const stretchT = easeOutCubic(Math.min(rawT * 2, 1));
+      const growRatio = toH / fromH;
+      const maxStretch = Math.min(growRatio - 1, 0.25);
+      fromEl.style.transform = `scaleY(${1 + stretchT * maxStretch})`;
+
+      // Fade starts late — "from" stays visible until "to" has grown past it
+      const fadeStart = 0.35;
+      const fromFade = rawT < fadeStart ? 1 : Math.max(0, 1 - (rawT - fadeStart) / (1 - fadeStart) * 1.3);
       fromEl.style.opacity = fromFade;
 
-      // === "To" frame: ellipse grows from root ===
-      const growT = easeOutCubic(Math.max(0, (rawT - 0.03) / 0.92));
-      // Vertical grows faster than horizontal (tree grows UP first)
-      const ry = 3 + growT * 120;
-      const rx = 5 + growT * 100;
+      // === "To" frame: ellipse grows outward FROM the old footprint ===
+      // Vertical first (tree grows up), horizontal follows (branches spread)
+      const ry = initRy + growT * (finalRy - initRy);
+      const rxDelay = Math.max(0, (rawT - 0.1) / 0.9); // horizontal lags slightly
+      const rx = initRx + easeOutCubic(rxDelay) * (finalRx - initRx);
       toEl.style.clipPath = `ellipse(${rx}% ${ry}% at 50% 100%)`;
 
-      // Scale decompresses
-      const scaleT = easeOutCubic(growT);
-      const startScaleY = Math.max(0.85, 1/growRatio);
-      const toScaleY = startScaleY + scaleT * (1 - startScaleY);
-      const toScaleX = 0.9 + scaleT * 0.1;
-      toEl.style.transform = `scaleY(${toScaleY}) scaleX(${toScaleX})`;
-
-      // Ground width
+      // Ground
       const gw = GROUND_W[fromIdx] + (GROUND_W[toIdx] - GROUND_W[fromIdx]) * growT;
       ground.style.width = gw + 'px';
 

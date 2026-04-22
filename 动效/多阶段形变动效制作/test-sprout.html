@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>枝干分叉测试 v2 — 向上生长</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: #F5F0E8;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  color: #5A4A3A;
+}
+.stage { width: 400px; height: 500px; }
+.controls { margin-top: 20px; display: flex; gap: 12px; }
+button {
+  padding: 10px 24px; background: #7B5953;
+  border: none; border-radius: 24px;
+  color: #F5F0E8; font-size: 14px; cursor: pointer;
+}
+button:hover { background: #5A4A3A; }
+.info { margin-top: 10px; font-size: 13px; color: #A89880; }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <canvas id="canvas" width="400" height="500"></canvas>
+</div>
+
+<div class="controls">
+  <button onclick="doGrow()">生长分叉</button>
+  <button onclick="doReset()">重置</button>
+</div>
+<div class="info" id="info">点击「生长分叉」— 枝干向上生长并分叉</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = 400, H = 500;
+
+// === 骨骼参数 ===
+const TRUNK_SEGS = 10;     // 主干段数（不分叉）
+const BRANCH_SEGS = 12;    // 分叉后每根的段数
+const TRUNK_BASE_X = 200;
+const TRUNK_BASE_Y = 480;
+const SEG_LEN = 12;
+const TRUNK_BASE_W = 26;   // 主干底部宽
+const TRUNK_TOP_W = 10;    // 主干分叉处宽
+const BRANCH_TIP_W = 3;    // 枝尖宽
+
+// === 动画状态 ===
+// growPhase: 0→1
+//   0~0.4: 主干向上生长
+//   0.3~1.0: 分叉逐渐展开并向上延伸
+let growPhase = 0;
+let targetPhase = 0;
+let velocity = 0;
+
+function computeTrunk(phase) {
+  // 主干：始终朝上（-PI/2），生长阶段控制显示多少段
+  const visibleSegs = Math.min(TRUNK_SEGS, Math.floor(phase * TRUNK_SEGS / 0.4 + 1));
+  const bones = [];
+  let x = TRUNK_BASE_X, y = TRUNK_BASE_Y;
+  const angle = -Math.PI / 2;
+
+  for (let i = 0; i <= Math.min(visibleSegs, TRUNK_SEGS); i++) {
+    const t = i / TRUNK_SEGS;
+    const w = TRUNK_BASE_W + (TRUNK_TOP_W - TRUNK_BASE_W) * t;
+    bones.push({ x, y, angle, width: w });
+    x += Math.cos(angle) * SEG_LEN;
+    y += Math.sin(angle) * SEG_LEN;
+  }
+  return bones;
+}
+
+function computeBranch(trunkTip, side, phase) {
+  // 分叉从 phase 0.3 开始
+  const branchPhase = Math.max(0, (phase - 0.3) / 0.7);
+  if (branchPhase <= 0) return [];
+
+  const visibleSegs = Math.ceil(branchPhase * BRANCH_SEGS);
+  const bones = [];
+  let x = trunkTip.x, y = trunkTip.y;
+  let cumAngle = -Math.PI / 2; // 从朝上开始
+
+  for (let i = 0; i <= visibleSegs; i++) {
+    const t = i / BRANCH_SEGS;
+    const w = TRUNK_TOP_W + (BRANCH_TIP_W - TRUNK_TOP_W) * t;
+
+    // 弯曲：前几段快速偏转，后面趋平（像真实树枝）
+    // 用 sqrt 曲线让前段弯得多、后段弯得少
+    const bendAmount = side === 'left' ? -0.06 : 0.06;
+    // 越靠近根部弯得越厉害，越往上越直（向上生长）
+    const segBend = bendAmount * (1 - t * 0.7);
+    cumAngle += segBend;
+
+    bones.push({ x, y, angle: cumAngle, width: w });
+    x += Math.cos(cumAngle) * SEG_LEN;
+    y += Math.sin(cumAngle) * SEG_LEN;
+  }
+  return bones;
+}
+
+function drawBoneChain(bones, color1, color2) {
+  if (bones.length < 2) return;
+
+  const leftEdge = [], rightEdge = [];
+  for (const b of bones) {
+    const px = Math.cos(b.angle + Math.PI / 2);
+    const py = Math.sin(b.angle + Math.PI / 2);
+    const hw = b.width / 2;
+    leftEdge.push({ x: b.x - px * hw, y: b.y - py * hw });
+    rightEdge.push({ x: b.x + px * hw, y: b.y + py * hw });
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(leftEdge[0].x, leftEdge[0].y);
+  for (let i = 1; i < leftEdge.length; i++) ctx.lineTo(leftEdge[i].x, leftEdge[i].y);
+  for (let i = rightEdge.length - 1; i >= 0; i--) ctx.lineTo(rightEdge[i].x, rightEdge[i].y);
+  ctx.closePath();
+
+  const first = bones[0], last = bones[bones.length - 1];
+  const grad = ctx.createLinearGradient(first.x, first.y, last.x, last.y);
+  grad.addColorStop(0, color1);
+  grad.addColorStop(1, color2);
+  ctx.fillStyle = grad;
+  ctx.fill();
+}
+
+function drawLeaf(tipX, tipY, angle, side, size) {
+  if (size < 0.05) return;
+  ctx.save();
+  ctx.translate(tipX, tipY);
+  ctx.rotate(angle + (side === 'left' ? -0.5 : 0.5));
+  ctx.scale(size, size);
+
+  const dir = side === 'left' ? -1 : 1;
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.bezierCurveTo(dir * 6, -22, dir * 30, -28, dir * 34, -10);
+  ctx.bezierCurveTo(dir * 30, 4, dir * 8, 6, 0, 0);
+  ctx.closePath();
+
+  const grad = ctx.createLinearGradient(0, -28, 0, 6);
+  grad.addColorStop(0, '#AAAE8F');
+  grad.addColorStop(1, '#746D56');
+  ctx.fillStyle = grad;
+  ctx.fill();
+  ctx.restore();
+}
+
+function render() {
+  ctx.clearRect(0, 0, W, H);
+
+  const p = growPhase;
+
+  // 主干
+  const trunk = computeTrunk(p);
+  drawBoneChain(trunk, '#977775', '#7C5F5A');
+
+  if (trunk.length < 2) return;
+  const trunkTip = trunk[trunk.length - 1];
+
+  // 分叉
+  const branchL = computeBranch(trunkTip, 'left', p);
+  const branchR = computeBranch(trunkTip, 'right', p);
+
+  if (branchL.length > 1) drawBoneChain(branchL, '#7C5F5A', '#8B6B66');
+  if (branchR.length > 1) drawBoneChain(branchR, '#7C5F5A', '#8B6B66');
+
+  // 叶子：在分叉末端，分叉长到一定程度后出现
+  const branchPhase = Math.max(0, (p - 0.3) / 0.7);
+  const leafSize = Math.max(0, (branchPhase - 0.5) / 0.5); // 后半段出叶
+
+  if (branchL.length > 1) {
+    const tipL = branchL[branchL.length - 1];
+    const angL = branchL[branchL.length - 2].angle;
+    drawLeaf(tipL.x, tipL.y, angL, 'left', easeOutBack(leafSize));
+  }
+  if (branchR.length > 1) {
+    const tipR = branchR[branchR.length - 1];
+    const angR = branchR[branchR.length - 2].angle;
+    drawLeaf(tipR.x, tipR.y, angR, 'right', easeOutBack(leafSize));
+  }
+}
+
+// === 弹性动画 ===
+let running = false;
+function animate() {
+  const stiffness = 0.06;
+  const damping = 0.85;
+
+  const force = (targetPhase - growPhase) * stiffness;
+  velocity += force;
+  velocity *= damping;
+  growPhase += velocity;
+
+  // 限制范围
+  growPhase = Math.max(0, Math.min(1.05, growPhase));
+
+  if (Math.abs(velocity) < 0.0003 && Math.abs(targetPhase - growPhase) < 0.001) {
+    growPhase = Math.max(0, Math.min(1, targetPhase));
+    velocity = 0;
+    render();
+    running = false;
+    document.getElementById('info').textContent =
+      targetPhase > 0 ? '主干生长 → 分叉向两侧上方弯曲 → 末端长叶 ✓' : '已重置';
+    return;
+  }
+
+  render();
+  requestAnimationFrame(animate);
+}
+
+function startAnim() {
+  if (!running) { running = true; animate(); }
+}
+
+function doGrow() {
+  targetPhase = 1;
+  startAnim();
+}
+
+function doReset() {
+  targetPhase = 0;
+  startAnim();
+}
+
+function easeOutBack(t) {
+  if (t <= 0) return 0;
+  if (t >= 1) return 1;
+  const c = 1.7;
+  return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2);
+}
+
+// 初始渲染
+render();
+</script>
+</body>
+</html>

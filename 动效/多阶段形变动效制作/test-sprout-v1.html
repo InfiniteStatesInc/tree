@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>枝干分叉测试 — 骨骼弯曲（不断裂）</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: #F5F0E8;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  color: #5A4A3A;
+}
+.stage { width: 400px; height: 500px; }
+.controls { margin-top: 20px; display: flex; gap: 12px; }
+button {
+  padding: 10px 24px; background: #7B5953;
+  border: none; border-radius: 24px;
+  color: #F5F0E8; font-size: 14px; cursor: pointer;
+}
+button:hover { background: #5A4A3A; }
+.info { margin-top: 10px; font-size: 13px; color: #A89880; }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <canvas id="canvas" width="400" height="500"></canvas>
+</div>
+
+<div class="controls">
+  <button onclick="doFork()">分叉</button>
+  <button onclick="doReset()">重置</button>
+</div>
+<div class="info" id="info">点击「分叉」— 枝干连续弯曲分叉，不断裂</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = 400, H = 500;
+
+// === 骨骼参数 ===
+const SEGMENTS = 20;       // 骨骼段数
+const TRUNK_BASE_X = 200;  // 底部中心 X
+const TRUNK_BASE_Y = 480;  // 底部 Y
+const SEGMENT_LEN = 14;    // 每段长度
+const BASE_WIDTH = 28;     // 底部宽度
+const TIP_WIDTH = 4;       // 尖端宽度
+
+// 分叉从第几段开始（0=底部）
+const FORK_START = 8;
+
+// 动画状态
+let forkAmount = 0;  // 0=合拢, 1=完全分叉
+let targetFork = 0;
+let velocity = 0;
+let animFrame = null;
+
+// 叶子参数
+const LEAF_SIZE = 1; // 会跟 forkAmount 联动
+
+function getSegmentAngle(segIdx, side, fork) {
+  // 分叉点以下：不弯曲
+  if (segIdx < FORK_START) return 0;
+  // 分叉点以上：角度随高度递增
+  const progress = (segIdx - FORK_START) / (SEGMENTS - FORK_START);
+  const maxAngle = side === 'left' ? -0.45 : 0.45; // 弧度
+  return maxAngle * progress * fork;
+}
+
+function computeBoneChain(side, fork) {
+  // 返回每段的 [{x, y, angle, width}]
+  const bones = [];
+  let x = TRUNK_BASE_X;
+  let y = TRUNK_BASE_Y;
+  let cumAngle = -Math.PI / 2; // 初始朝上
+
+  for (let i = 0; i < SEGMENTS; i++) {
+    const w = BASE_WIDTH - (BASE_WIDTH - TIP_WIDTH) * (i / (SEGMENTS - 1));
+    const segAngle = getSegmentAngle(i, side, fork);
+    cumAngle += segAngle;
+
+    bones.push({ x, y, angle: cumAngle, width: w });
+
+    x += Math.cos(cumAngle) * SEGMENT_LEN;
+    y += Math.sin(cumAngle) * SEGMENT_LEN;
+  }
+  // 最后一个点（尖端）
+  bones.push({ x, y, angle: cumAngle, width: 0 });
+  return bones;
+}
+
+function drawBranch(bones, color1, color2) {
+  if (bones.length < 2) return;
+
+  // 计算左右边缘点
+  const leftEdge = [];
+  const rightEdge = [];
+
+  for (const b of bones) {
+    const perpX = Math.cos(b.angle + Math.PI / 2);
+    const perpY = Math.sin(b.angle + Math.PI / 2);
+    const hw = b.width / 2;
+    leftEdge.push({ x: b.x - perpX * hw, y: b.y - perpY * hw });
+    rightEdge.push({ x: b.x + perpX * hw, y: b.y + perpY * hw });
+  }
+
+  // 绘制填充形状
+  ctx.beginPath();
+  ctx.moveTo(leftEdge[0].x, leftEdge[0].y);
+
+  // 左边上去
+  for (let i = 1; i < leftEdge.length; i++) {
+    ctx.lineTo(leftEdge[i].x, leftEdge[i].y);
+  }
+  // 右边下来
+  for (let i = rightEdge.length - 1; i >= 0; i--) {
+    ctx.lineTo(rightEdge[i].x, rightEdge[i].y);
+  }
+  ctx.closePath();
+
+  // 渐变填充
+  const grad = ctx.createLinearGradient(
+    TRUNK_BASE_X, TRUNK_BASE_Y,
+    bones[bones.length - 1].x, bones[bones.length - 1].y
+  );
+  grad.addColorStop(0, color1);
+  grad.addColorStop(1, color2);
+  ctx.fillStyle = grad;
+  ctx.fill();
+}
+
+function drawLeaf(tipX, tipY, angle, side, size) {
+  if (size < 0.01) return;
+
+  ctx.save();
+  ctx.translate(tipX, tipY);
+  ctx.rotate(angle + (side === 'left' ? -0.3 : 0.3));
+  ctx.scale(size, size);
+
+  // 叶子形状
+  const dir = side === 'left' ? -1 : 1;
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.bezierCurveTo(
+    dir * 8, -25,
+    dir * 35, -30,
+    dir * 38, -12
+  );
+  ctx.bezierCurveTo(
+    dir * 35, 2,
+    dir * 10, 5,
+    0, 0
+  );
+  ctx.closePath();
+
+  const grad = ctx.createLinearGradient(0, -30, 0, 5);
+  grad.addColorStop(0, '#AAAE8F');
+  grad.addColorStop(1, '#746D56');
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function render() {
+  ctx.clearRect(0, 0, W, H);
+
+  const f = forkAmount;
+
+  if (f < 0.01) {
+    // 合拢：画一根
+    const bones = computeBoneChain('center', 0);
+    drawBranch(bones, '#977775', '#7C5F5A');
+
+    // 合拢时叶子贴在一起
+    const tip = bones[bones.length - 1];
+    drawLeaf(tip.x, tip.y, bones[bones.length - 2].angle, 'left', 1);
+    drawLeaf(tip.x, tip.y, bones[bones.length - 2].angle, 'right', 1);
+  } else {
+    // 分叉：画两根
+    // 先画后面的（按 Z 序）
+    const bonesL = computeBoneChain('left', f);
+    const bonesR = computeBoneChain('right', f);
+
+    // 共用底部 + 各自上部
+    drawBranch(bonesL, '#977775', '#7C5F5A');
+    drawBranch(bonesR, '#977775', '#7C5F5A');
+
+    // 叶子
+    const tipL = bonesL[bonesL.length - 1];
+    const tipR = bonesR[bonesR.length - 1];
+    const angleL = bonesL[bonesL.length - 2].angle;
+    const angleR = bonesR[bonesR.length - 2].angle;
+    drawLeaf(tipL.x, tipL.y, angleL, 'left', 1);
+    drawLeaf(tipR.x, tipR.y, angleR, 'right', 1);
+  }
+}
+
+// === 弹性动画 ===
+function animate() {
+  const stiffness = 0.08;  // 弹簧刚度
+  const damping = 0.82;    // 阻尼
+
+  const force = (targetFork - forkAmount) * stiffness;
+  velocity += force;
+  velocity *= damping;
+  forkAmount += velocity;
+
+  // 收敛检测
+  if (Math.abs(velocity) < 0.0005 && Math.abs(targetFork - forkAmount) < 0.001) {
+    forkAmount = targetFork;
+    velocity = 0;
+    render();
+    document.getElementById('info').textContent =
+      targetFork > 0 ? '枝干从根部连续弯曲分叉 ✓' : '已重置';
+    return;
+  }
+
+  render();
+  animFrame = requestAnimationFrame(animate);
+}
+
+function doFork() {
+  targetFork = 1;
+  if (!animFrame) animate();
+  else { /* already animating */ }
+}
+
+function doReset() {
+  targetFork = 0;
+  if (!animFrame) animate();
+}
+
+// 初始渲染
+render();
+</script>
+</body>
+</html>

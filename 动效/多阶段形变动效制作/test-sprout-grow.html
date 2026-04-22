@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>中间抽枝生长动画</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: #F5F0E8;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  color: #5A4A3A;
+}
+.stage { width: 450px; height: 450px; }
+svg { width: 100%; height: 100%; }
+.controls { margin-top: 20px; display: flex; gap: 12px; align-items: center; }
+button {
+  padding: 10px 24px; background: #7B5953;
+  border: none; border-radius: 24px;
+  color: #F5F0E8; font-size: 14px; cursor: pointer;
+}
+button:hover { background: #5A4A3A; }
+.slider-wrap { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.slider-wrap label { font-size: 13px; color: #A89880; }
+input[type=range] { width: 260px; accent-color: #7B5953; }
+.info { margin-top: 10px; font-size: 13px; color: #A89880; }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <svg viewBox="-10 -5 127 120" preserveAspectRatio="xMidYMax meet">
+    <defs>
+      <linearGradient id="trunkGrad" x1="67.5" y1="89.5" x2="94.5" y2="120.5" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#7B5953"/><stop offset="1" stop-color="#977775"/>
+      </linearGradient>
+      <linearGradient id="leafGradL" x1="19" y1="0" x2="19" y2="35" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#AAAE8F"/><stop offset="1" stop-color="#746D56"/>
+      </linearGradient>
+      <linearGradient id="leafGradR" x1="93.5" y1="23" x2="93.5" y2="47" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#A8AE87"/><stop offset="1" stop-color="#6C644A"/>
+      </linearGradient>
+    </defs>
+
+    <!-- 枝干（参数化生长） -->
+    <path id="trunk" fill="url(#trunkGrad)"/>
+
+    <!-- 左叶 -->
+    <path d="M37.6155 33.4913L38.5 35.3708C39.3 -3.02915 13.1667 -2.62915 0 2.37085C3.14209 2.37085 6.09518 3.87165 7.94734 6.4098L15.3243 16.519C17.396 19.358 20.2536 21.5284 23.5443 22.7625L27.649 24.3017C32.0418 25.949 35.6179 29.2463 37.6155 33.4913Z"
+          fill="url(#leafGradL)"/>
+
+    <!-- 右叶 -->
+    <path d="M89.2927 38.8817L88.8445 39.0444C84.9785 40.4477 81.8108 43.3011 80.0126 47C79.4518 20.9446 97.7705 21.2161 107 24.6087C104.793 24.6087 102.714 25.645 101.385 27.4074L97.0671 33.1354C95.0864 35.7628 92.3857 37.759 89.2927 38.8817Z"
+          fill="url(#leafGradR)"/>
+  </svg>
+</div>
+
+<div class="controls">
+  <button onclick="doGrow()">生长</button>
+  <button onclick="doReset()">重置</button>
+</div>
+<div class="slider-wrap">
+  <label>手动控制 t:</label>
+  <input type="range" id="slider" min="0" max="1000" value="0">
+  <span id="tVal" style="font-size:12px;color:#A89880;min-width:36px;">0.00</span>
+</div>
+<div class="info" id="info">点击「生长」或拖滑条 — 从分叉中间向上抽出新枝</div>
+
+<script>
+const trunkEl = document.getElementById('trunk');
+const infoEl  = document.getElementById('info');
+const slider  = document.getElementById('slider');
+const tValEl  = document.getElementById('tVal');
+
+// === 工具函数 ===
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+function easeInOutCubic(t) {
+  return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2;
+}
+
+// === 参数化路径构建 ===
+// 把 path 拆成：不变段（左枝外侧、右枝下半、底部闭合）+ 可变段（内侧 V → 中间枝条）
+// t: 0 = Group 14（普通 V 形）→ 1 = Group 16（中间长出新枝）
+
+function buildPath(t) {
+  // 不同维度用不同的缓动，让生长更自然
+  // 高度先行（枝条先往上窜），宽度跟随（慢慢撑开）
+  const eH = easeOutCubic(t);           // 高度缓动：快起慢停
+  const eW = easeOutCubic(Math.max(0, (t - 0.05) / 0.95)); // 宽度略滞后
+  const eC = easeOutCubic(t);           // 曲线控制点缓动
+
+  // ---- 固定段 ----
+  const head = 'M46 105C68.8 103 53.5 61 32.5 25.5';
+  const tail = 'C74.5 65.5 67.9894 81 72 91C77.5107 98.0392 91.9377 104.657 98 105H46Z';
+
+  // ---- 可变段：内侧左曲线（从左枝尖 → 分叉/枝条根部） ----
+  // Group14: C 56.5 55.5,  56 60.5,  64.5 81
+  // Group16: C 49.4631 46.7038,  54.1869 55.4187,  58.5 65.9445
+  const ilc1x = lerp(56.5, 49.4631, eC);
+  const ilc1y = lerp(55.5, 46.7038, eC);
+  const ilc2x = lerp(56, 54.1869, eC);
+  const ilc2y = lerp(60.5, 55.4187, eC);
+  const ilpx  = lerp(64.5, 58.5, eC);
+  const ilpy  = lerp(81, 65.9445, eC);
+
+  // ---- 可变段：中间枝条 ----
+  // 枝条顶端 Y：从 ilpy（收拢=不可见）到 10（完全伸出）
+  const tipY = lerp(ilpy, 10, eH);
+  // 枝条宽度：从 0 到 1.25（半宽）
+  const halfW = 1.25 * eW;
+  const cx = 60.75;  // 枝条中心 X
+  const tipLx = cx - halfW;
+  const tipRx = cx + halfW;
+
+  // ---- 可变段：枝条右侧下行曲线 ----
+  // t=0 时所有点收拢到 junction (64.5, 81)
+  // t=1 时展开为 Group16 的曲线
+  const jx = 64.5, jy = 81;
+
+  // 第一段 C: 从枝条顶端右侧下来
+  const rd1_c1x = lerp(jx, tipRx, eC);
+  const rd1_c1y = lerp(jy, tipY, eC);
+  const rd1_c2x = lerp(jx, 64.2698, eC);
+  const rd1_c2y = lerp(jy, 34, eH);
+  const rd1_px  = lerp(jx, 65.1349, eC);
+  const rd1_py  = lerp(jy, 41, eH);
+
+  // 第二段 C: 继续下行到分叉根部
+  const rd2_c1x = lerp(jx, 66, eC);
+  const rd2_c1y = lerp(jy, 48, eH);
+  const rd2_c2x = lerp(jx, 68.2698, eC);
+  const rd2_c2y = lerp(jy, 72, eC);
+  const rd2_px  = lerp(jx, 68.2698, eC);
+  const rd2_py  = lerp(jy, 72, eC);
+
+  // ---- 可变段：内侧右曲线（从分叉根部 → 右枝） ----
+  // Group14: C 64.5 81,  90.5 18.5,  82.5 42
+  // Group16: C 75.1606 55.6275,  88.5487 24.2319,  82.5 42
+  const irc1x = lerp(64.5, 75.1606, eC);
+  const irc1y = lerp(81, 55.6275, eC);
+  const irc2x = lerp(90.5, 88.5487, eC);
+  const irc2y = lerp(18.5, 24.2319, eC);
+
+  // 组装路径
+  return head
+    + `C${ilc1x} ${ilc1y} ${ilc2x} ${ilc2y} ${ilpx} ${ilpy}`
+    + `L${tipLx} ${tipY}H${tipRx}`
+    + `C${rd1_c1x} ${rd1_c1y} ${rd1_c2x} ${rd1_c2y} ${rd1_px} ${rd1_py}`
+    + `C${rd2_c1x} ${rd2_c1y} ${rd2_c2x} ${rd2_c2y} ${rd2_px} ${rd2_py}`
+    + `C${irc1x} ${irc1y} ${irc2x} ${irc2y} 82.5 42`
+    + tail;
+}
+
+// === 渲染 ===
+function renderAt(t) {
+  trunkEl.setAttribute('d', buildPath(t));
+}
+
+// 初始渲染
+renderAt(0);
+
+// === 滑条控制 ===
+let manualMode = false;
+slider.addEventListener('input', () => {
+  manualMode = true;
+  const t = slider.value / 1000;
+  tValEl.textContent = t.toFixed(2);
+  renderAt(t);
+});
+
+// === 动画 ===
+let animating = false;
+
+function doGrow() {
+  if (animating) return;
+  manualMode = false;
+  animating = true;
+
+  const duration = 1800;
+  const start = performance.now();
+
+  function tick(now) {
+    const raw = Math.min((now - start) / duration, 1);
+    const t = easeInOutCubic(raw);
+    renderAt(t);
+    slider.value = Math.round(t * 1000);
+    tValEl.textContent = t.toFixed(2);
+
+    if (raw < 1) {
+      requestAnimationFrame(tick);
+    } else {
+      animating = false;
+      infoEl.textContent = '新枝从分叉处向上抽出 ✓';
+    }
+  }
+  requestAnimationFrame(tick);
+}
+
+function doReset() {
+  if (animating) return;
+  manualMode = false;
+  animating = true;
+
+  const duration = 1000;
+  const start = performance.now();
+  const fromT = parseFloat(tValEl.textContent) || 1;
+
+  function tick(now) {
+    const raw = Math.min((now - start) / duration, 1);
+    const t = fromT * (1 - easeInOutCubic(raw));
+    renderAt(t);
+    slider.value = Math.round(t * 1000);
+    tValEl.textContent = t.toFixed(2);
+
+    if (raw < 1) {
+      requestAnimationFrame(tick);
+    } else {
+      renderAt(0);
+      slider.value = 0;
+      tValEl.textContent = '0.00';
+      animating = false;
+      infoEl.textContent = '已重置';
+    }
+  }
+  requestAnimationFrame(tick);
+}
+</script>
+</body>
+</html>
