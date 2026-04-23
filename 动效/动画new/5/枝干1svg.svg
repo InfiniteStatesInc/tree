@@ -1,9 +1,9 @@
-<svg width="66" height="80" viewBox="0 0 66 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-<g filter="url(#filter0_n_886_1886)">
-<path d="M13.5 79.5C36.3 77.5 21 35.5 0 0C24 30 23.5 35 32 55.5C32 55.5 58 -7 50 16.5C42 40 35.4894 55.5 39.5 65.5C45.0107 72.5392 59.4377 79.1569 65.5 79.5H13.5Z" fill="url(#paint0_linear_886_1886)"/>
+<svg width="92" height="79" viewBox="0 0 92 79" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g filter="url(#filter0_n_940_1757)">
+<path d="M28.6656 78.3333C56.3665 75.9034 47.7778 31.1111 0 0C28.6656 17.2222 40.8151 24.2679 51.1422 49.1745C51.1422 49.1745 56.6667 23.906 70 11.8333C84.2157 -1.03825 85.3495 1.99887 75.5 12.8333C58.8333 31.1666 55.3817 49.1745 60.2544 61.324C66.9496 69.8762 84.4778 77.9164 91.8432 78.3333H28.6656Z" fill="url(#paint0_linear_940_1757)"/>
 </g>
 <defs>
-<filter id="filter0_n_886_1886" x="0" y="0" width="65.5" height="79.5" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<filter id="filter0_n_940_1757" x="0" y="0" width="91.8431" height="78.3333" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
 <feFlood flood-opacity="0" result="BackgroundImageFix"/>
 <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
 <feTurbulence type="fractalNoise" baseFrequency="10 10" stitchTiles="stitch" numOctaves="3" result="noise" seed="1277" />
@@ -14,12 +14,12 @@
 <feComposite operator="in" in2="shape" in="coloredNoise1" result="noise1Clipped" />
 <feFlood flood-color="rgba(0, 0, 0, 0.25)" result="color1Flood" />
 <feComposite operator="in" in2="noise1Clipped" in="color1Flood" result="color1" />
-<feMerge result="effect1_noise_886_1886">
+<feMerge result="effect1_noise_940_1757">
 <feMergeNode in="shape" />
 <feMergeNode in="color1" />
 </feMerge>
 </filter>
-<linearGradient id="paint0_linear_886_1886" x1="35" y1="64" x2="62" y2="95" gradientUnits="userSpaceOnUse">
+<linearGradient id="paint0_linear_940_1757" x1="54.7871" y1="59.5015" x2="87.5909" y2="97.1651" gradientUnits="userSpaceOnUse">
 <stop stop-color="#7B5953"/>
 <stop offset="1" stop-color="#977775"/>
 </linearGradient>

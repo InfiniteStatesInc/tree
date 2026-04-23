@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flower Position Debug</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #f5f0eb;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: -apple-system, sans-serif;
+    gap: 20px;
+  }
+  .stage { width: 360px; height: 400px; border: 1px dashed #d8d0c6; }
+  .controls {
+    width: 360px;
+    padding: 16px;
+    background: #fff;
+    border: 1px solid #d8d0c6;
+    border-radius: 10px;
+    font-size: 13px;
+    color: #7B5953;
+  }
+  .controls h3 { margin-bottom: 12px; font-size: 14px; }
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .row label { min-width: 70px; }
+  .row input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 4px;
+    background: #d8d0c6;
+    border-radius: 2px;
+    outline: none;
+  }
+  .row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #7B5953;
+    cursor: grab;
+  }
+  .row .val { min-width: 50px; text-align: right; font-variant-numeric: tabular-nums; }
+  .code {
+    margin-top: 12px;
+    padding: 10px;
+    background: #f5f0eb;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 13px;
+    word-break: break-all;
+    user-select: all;
+  }
+  .crosshair { stroke: red; stroke-width: 0.5; opacity: 0.4; }
+</style>
+</head>
+<body>
+
+<svg class="stage" viewBox="-55 -50 165 162" preserveAspectRatio="xMidYMax meet">
+  <defs>
+    <linearGradient id="gT" x1="55" y1="80" x2="85" y2="115" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7B5953"/><stop offset="1" stop-color="#977775"/>
+    </linearGradient>
+    <linearGradient id="gL1" x1="0.5" y1="0" x2="0.5" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#AAAE8F"/><stop offset="1" stop-color="#746D56"/>
+    </linearGradient>
+    <linearGradient id="gL2" x1="0.5" y1="0" x2="0.5" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#A8AE87"/><stop offset="1" stop-color="#6C644A"/>
+    </linearGradient>
+    <linearGradient id="gFlower" x1="17" y1="0" x2="17" y2="32" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E1CCC9"/><stop offset="1" stop-color="#C18184"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Center crosshair for reference -->
+  <line class="crosshair" x1="-55" y1="0" x2="110" y2="0"/>
+  <line class="crosshair" x1="30.75" y1="-50" x2="30.75" y2="112"/>
+
+  <g id="scaleGroup">
+    <!-- Shoot (stem) -->
+    <path id="shoot" d="" fill="#6D4F49"/>
+    <!-- Trunk -->
+    <path id="trunk" d="" fill="url(#gT)"/>
+    <!-- Leaf 1 -->
+    <g id="g1" transform="translate(-33,0) translate(38,34) scale(1) translate(-38,-34)">
+      <path d="M37.6155 33.4913 L38.5 35.3708 C39.3 -3.02915 13.1667 -2.62915 0 2.37085 C3.14209 2.37085 6.09518 3.87165 7.94734 6.4098 L15.3243 16.519 C17.396 19.358 20.2536 21.5284 23.5443 22.7625 L27.649 24.3017 C32.0418 25.949 35.6179 29.2463 37.6155 33.4913 Z"
+        fill="url(#gL1)"/>
+    </g>
+    <!-- Leaf 2 -->
+    <g id="g2" transform="translate(9,13) translate(38,34) scale(1) translate(-38,-34)">
+      <path d="M47.2927 25.8817 L46.8445 26.0444 C42.9785 27.4477 39.8108 30.3011 38.0126 34 C37.4518 7.94465 55.7705 8.21606 65 11.6087 C62.7929 11.6087 60.7139 12.645 59.3853 14.4074 L55.0671 20.1354 C53.0864 22.7628 50.3857 24.759 47.2927 25.8817 Z"
+        fill="url(#gL2)"/>
+    </g>
+    <!-- Flower group — this is what we're debugging -->
+    <g id="flowerGroup">
+      <path id="flower"
+        d="M33.4313 17.6603 C33.996 10.7008 29.4316 10.2993 27.0789 10.9685 C29.3375 0.261654 20.9617 -0.63067 16.4914 0.261524 C6.89217 -1.34451 5.43346 6.73032 5.90401 10.9685 C0.822044 9.89786 0.0221035 14.9836 0.257379 17.6603 C-2.00127 30.5086 11.1558 33.0175 18.2141 31.6791 C34.0247 33.2851 35.0782 22.3446 33.4313 17.6603 Z"
+        fill="url(#gFlower)"/>
+    </g>
+
+    <!-- Shoot tip marker -->
+    <circle id="tipDot" r="1.5" fill="red" opacity="0.6"/>
+  </g>
+</svg>
+
+<div class="controls">
+  <h3>Flower Position Debug</h3>
+  <div class="row">
+    <label>Flower X</label>
+    <input type="range" id="fx" min="-20" max="40" step="0.5" value="14">
+    <span class="val" id="fxV">14</span>
+  </div>
+  <div class="row">
+    <label>Flower Y</label>
+    <input type="range" id="fy" min="-40" max="20" step="0.5" value="-16">
+    <span class="val" id="fyV">-16</span>
+  </div>
+  <div class="row">
+    <label>Shoot tip Y</label>
+    <input type="range" id="tipY" min="-20" max="30" step="0.5" value="0">
+    <span class="val" id="tipYV">0</span>
+  </div>
+  <div class="row">
+    <label>Scale</label>
+    <input type="range" id="sc" min="1" max="1.5" step="0.01" value="1.267">
+    <span class="val" id="scV">1.267</span>
+  </div>
+  <div class="code" id="output">
+    gFlower: translate(14 -16)<br>
+    buildShoot tip: y=0<br>
+    scale: 1.267
+  </div>
+</div>
+
+<script>
+const SX = 39, SY = 105;
+const trunkEl = document.getElementById('trunk');
+const shootEl = document.getElementById('shoot');
+const flowerG = document.getElementById('flowerGroup');
+const tipDot  = document.getElementById('tipDot');
+const scaleG  = document.getElementById('scaleGroup');
+const output  = document.getElementById('output');
+
+// Build the split trunk (state 3 final shape)
+function buildSplitTrunk() {
+  return 'M13 105 C35.8 103 20.5 61 -0.5 25.5 C23.5 55.5 23 60.5 31.5 81 C31.5 81 57.5 18.5 49.5 42 C41.5 65.5 34.99 81 39 91 C44.51 98.04 58.94 104.66 65 105 L13 105 Z';
+}
+
+function buildShoot(ty) {
+  const c1y = 84.6;
+  const c2y = 30 + (ty / 87) * 57; // scale control point proportionally
+  return `M36 87H27C28 ${c1y} 29.4375 ${c2y} 30 ${ty}H31.5L36 87Z`;
+}
+
+function render() {
+  const fxVal  = parseFloat(document.getElementById('fx').value);
+  const fyVal  = parseFloat(document.getElementById('fy').value);
+  const tipVal = parseFloat(document.getElementById('tipY').value);
+  const scVal  = parseFloat(document.getElementById('sc').value);
+
+  document.getElementById('fxV').textContent = fxVal;
+  document.getElementById('fyV').textContent = fyVal;
+  document.getElementById('tipYV').textContent = tipVal;
+  document.getElementById('scV').textContent = scVal;
+
+  // Trunk
+  trunkEl.setAttribute('d', buildSplitTrunk());
+
+  // Shoot
+  shootEl.setAttribute('d', buildShoot(tipVal));
+
+  // Shoot tip marker (center of tip)
+  tipDot.setAttribute('cx', 30.75);
+  tipDot.setAttribute('cy', tipVal);
+
+  // Scale group
+  scaleG.setAttribute('transform',
+    `translate(${SX},${SY}) scale(${scVal}) translate(${-SX},${-SY})`);
+
+  // Flower position
+  flowerG.setAttribute('transform', `translate(${fxVal} ${fyVal})`);
+
+  // Output
+  output.innerHTML =
+    `gFlower: <b>translate(${fxVal} ${fyVal})</b><br>` +
+    `buildShoot tip: y=${tipVal}<br>` +
+    `scale: ${scVal}`;
+}
+
+// Listen to all sliders
+['fx', 'fy', 'tipY', 'sc'].forEach(id => {
+  document.getElementById(id).addEventListener('input', render);
+});
+
+// Initial render
+render();
+</script>
+</body>
+</html>

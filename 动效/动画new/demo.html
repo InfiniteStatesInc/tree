@@ -21,14 +21,16 @@
   .stage-wrapper {
     position: relative;
     width: 321px;   /* 107 * 3 */
-    height: 399px;  /* 133 * 3 */
+    height: 459px;  /* 153 * 3 */
     margin-bottom: 40px;
+    overflow: visible;
   }
 
   .stage {
     position: relative;
     width: 100%;
     height: 100%;
+    overflow: visible;
   }
 
   .frame {
@@ -39,39 +41,41 @@
     image-rendering: auto;
   }
 
-  /* Frame 1: mound 43x13, centered */
+  /* All frames centered on trunk axis (stage center = 160.5px) */
+
+  /* Frame 1: mound 43x13, trunk center ~x=19 → left = 160.5 - 19*3 = 103.5px */
   .frame-1 {
     width: calc(43px * 3);
     height: calc(13px * 3);
-    left: calc((107 - 43) / 2 * 3px);
+    left: 103.5px;
   }
 
-  /* Frame 2: 65x92, centered */
+  /* Frame 2: 65x92, trunk center ~x=38 → left = 160.5 - 38*3 = 46.5px */
   .frame-2 {
     width: calc(65px * 3);
     height: calc(92px * 3);
-    left: calc((107 - 65) / 2 * 3px);
+    left: 46.5px;
   }
 
-  /* Frame 3: 107x105 */
+  /* Frame 3: 107x105, trunk ~x=64 → left = 160.5 - 64*3 = -31.5px */
   .frame-3 {
     width: calc(107px * 3);
     height: calc(105px * 3);
-    left: 0;
+    left: -31.5px;
   }
 
-  /* Frame 4: 107x105 */
+  /* Frame 4: 107x105, trunk ~x=64 → left = 160.5 - 64*3 = -31.5px */
   .frame-4 {
     width: calc(107px * 3);
     height: calc(105px * 3);
-    left: 0;
+    left: -31.5px;
   }
 
-  /* Frame 5: 107x133 */
+  /* Frame 5: 107x153 (stem extended +20), trunk ~x=64 → left = -31.5px */
   .frame-5 {
     width: calc(107px * 3);
-    height: calc(133px * 3);
-    left: 0;
+    height: calc(153px * 3);
+    left: -31.5px;
   }
 
   /* Frame label */
@@ -125,6 +129,12 @@
     color: #888;
     min-width: 40px;
     text-align: right;
+  }
+
+  .speed-label {
+    font-size: 13px;
+    color: #888;
+    min-width: 44px;
   }
 
   .frame-indicators {
@@ -200,6 +210,11 @@
     <span data-frame="0.75">4 NewShoot</span>
     <span data-frame="1">5 Bloom</span>
   </div>
+  <div class="slider-row">
+    <span class="speed-label">Speed</span>
+    <input type="range" id="speedSlider" min="0.1" max="3" step="0.1" value="1">
+    <span class="progress-text" id="speedText">1.0x</span>
+  </div>
   <div class="btn-row">
     <button class="btn" id="playBtn">Play</button>
     <button class="btn" id="resetBtn">Reset</button>
@@ -220,6 +235,8 @@ const frames = [
 const playBtn = document.getElementById('playBtn');
 const resetBtn = document.getElementById('resetBtn');
 const indicators = document.querySelectorAll('.frame-indicators span');
+const speedSlider = document.getElementById('speedSlider');
+const speedText = document.getElementById('speedText');
 
 const frameNames = [
   '1 - Mound',
@@ -315,6 +332,11 @@ indicators.forEach(ind => {
   });
 });
 
+// Speed slider
+speedSlider.addEventListener('input', () => {
+  speedText.textContent = parseFloat(speedSlider.value).toFixed(1) + 'x';
+});
+
 // Play button
 function startPlay() {
   if (playing) return;
@@ -324,13 +346,14 @@ function startPlay() {
 
   let startTime = null;
   const startVal = parseFloat(slider.value);
-  const duration = (1 - startVal) * 6000; // 6s total
+  const baseDuration = 6000; // 6s at 1x speed
 
   function step(timestamp) {
     if (!playing) return;
     if (!startTime) startTime = timestamp;
     const elapsed = timestamp - startTime;
-    const progress = Math.min(startVal + (elapsed / 6000), 1);
+    const speed = parseFloat(speedSlider.value);
+    const progress = Math.min(startVal + (elapsed * speed / baseDuration), 1);
     slider.value = progress;
     updateDisplay(progress);
     if (progress < 1) {
