@@ -158,47 +158,55 @@
 
   <!-- Wrapper group: translate animates from (25.5,33) to (0,0) for coordinate alignment -->
   <g id="tree">
-    <!-- Render order: back to front -->
+    <!-- Render order: back to front.
+         Left/right side branches go BEHIND the trunk so the trunk visually
+         covers the messy root-joint where branches attach. Flowers then
+         render in front of all wood so branch morphs don't cover them. -->
 
-    <!-- 1. Small left flower -->
+    <!-- 1. Root (deepest) -->
+    <path id="pRoot" fill="#AE8B85" filter="url(#noiseTrunk)"/>
+
+    <!-- 2. Left branch (behind trunk) -->
+    <path id="pLeftBranch" fill="url(#gLeftBranch)" filter="url(#noiseBranch)"/>
+
+    <!-- 3. Right branch (behind trunk) -->
+    <path id="pRightBranch" fill="url(#gRightBranch)" filter="url(#noiseBranch)"/>
+
+    <!-- 4. Trunk (covers branch-to-trunk joints) -->
+    <path id="pTrunk" fill="url(#gTrunk)" filter="url(#noiseTrunk)"/>
+
+    <!-- 5. NEW: small branch (on top of trunk) -->
+    <path id="pNewBranch" d="M184.5 151L145 169.5L148 174L184.5 151Z" fill="#725C58" opacity="0"/>
+
+    <!-- ── All flowers render in front of wood ── -->
+
+    <!-- 6. Small left flower -->
     <path id="pSmallFlower" fill="url(#gSmallFlower)" filter="url(#noisePink)"/>
 
-    <!-- 2. Right large flower -->
+    <!-- 7. Left flower cluster -->
+    <path id="pLeftCluster" fill="url(#gLeftCluster)" filter="url(#noisePink)"/>
+
+    <!-- 8. Medium flower -->
+    <path id="pMedFlower" fill="url(#gMedFlower)" filter="url(#noisePink)"/>
+
+    <!-- 9. Main flower cluster -->
+    <path id="pMainFlower" fill="url(#gMainFlower)" filter="url(#noisePink)"/>
+
+    <!-- 10. Right large flower -->
     <path id="pRightFlower" fill="url(#gRightFlower)" filter="url(#noisePink)"/>
 
-    <!-- 3. NEW: second right flower cluster (grows from 0) -->
-    <g id="gNewFlower2">
+    <!-- 11. NEW: second right flower cluster (grows from 0).
+         Group id is prefixed `grp` because the gradient in <defs> owns
+         id="gNewFlower2" — getElementById would otherwise resolve to the
+         gradient and silently drop our transform/opacity writes. -->
+    <g id="grpNewFlower2">
       <path id="pNewFlower2" fill="url(#gNewFlower2)" filter="url(#noisePink)"/>
     </g>
 
-    <!-- 4. Medium flower -->
-    <path id="pMedFlower" fill="url(#gMedFlower)" filter="url(#noisePink)"/>
-
-    <!-- 5. Main flower cluster -->
-    <path id="pMainFlower" fill="url(#gMainFlower)" filter="url(#noisePink)"/>
-
-    <!-- 6. Left flower cluster -->
-    <path id="pLeftCluster" fill="url(#gLeftCluster)" filter="url(#noisePink)"/>
-
-    <!-- 7. NEW: small flower bud (grows from 0) -->
-    <g id="gNewBud">
+    <!-- 12. NEW: small flower bud (topmost). Same rename as above. -->
+    <g id="grpNewBud">
       <path id="pNewBud" fill="url(#gNewBud)" filter="url(#noisePink)"/>
     </g>
-
-    <!-- 8. Left branch -->
-    <path id="pLeftBranch" fill="url(#gLeftBranch)" filter="url(#noiseBranch)"/>
-
-    <!-- 9. Right branch -->
-    <path id="pRightBranch" fill="url(#gRightBranch)" filter="url(#noiseBranch)"/>
-
-    <!-- 10. Trunk -->
-    <path id="pTrunk" fill="url(#gTrunk)" filter="url(#noiseTrunk)"/>
-
-    <!-- 11. Root -->
-    <path id="pRoot" fill="#AE8B85" filter="url(#noiseTrunk)"/>
-
-    <!-- 12. NEW: small branch (grows from 0) -->
-    <path id="pNewBranch" d="M184.5 151L145 169.5L148 174L184.5 151Z" fill="#725C58" opacity="0"/>
   </g>
 </svg>
 
@@ -272,12 +280,20 @@ const S2 = {
 };
 
 // ═══════════════════════════════════════════════════
-// Coordinate alignment: stage 1 (312×384) → stage 2 (363×417)
-// Bottom-center alignment offset — baked into S1 paths so the wrapper
-// can stay static at (0,0) and we don't get a drifting cross-fade feel.
+// Coordinate alignment — ANCHOR by trunk base center, not viewBox.
+//
+// If we aligned by viewBox (dx=+25.5), S1's trunk base center lands at
+// x=146.75 but S2's base center is at x=113.25 → 33px horizontal drift
+// during the morph ("tree slides left as it grows"). Instead, pin S1's
+// trunk base center onto S2's so the trunk's vertical axis is fixed
+// throughout and growth only happens upward/outward.
+//
+// Measured base centers (xMin–xMax at the path's yMax):
+//   S1.trunk+root footprint: x∈[60, 182.5]  → center 121.25, y=384
+//   S2.trunk+root footprint: x∈[45, 181.5]  → center 113.25, y=417
 // ═══════════════════════════════════════════════════
-const OFFSET_X = (363 - 312) / 2;  // 25.5
-const OFFSET_Y = 417 - 384;         // 33
+const OFFSET_X = 113.25 - 121.25;  // -8
+const OFFSET_Y = 417    - 384;     //  33
 
 // Shift all absolute coords in an SVG path. Handles M/L/C (x,y pairs),
 // H (x only), V (y only). Our data uses uppercase only.
@@ -313,9 +329,9 @@ const pLeftBranch   = document.getElementById('pLeftBranch');
 const pRightBranch  = document.getElementById('pRightBranch');
 const pTrunk        = document.getElementById('pTrunk');
 const pRoot         = document.getElementById('pRoot');
-const gNewFlower2   = document.getElementById('gNewFlower2');
+const gNewFlower2   = document.getElementById('grpNewFlower2');
 const pNewFlower2   = document.getElementById('pNewFlower2');
-const gNewBud       = document.getElementById('gNewBud');
+const gNewBud       = document.getElementById('grpNewBud');
 const pNewBud       = document.getElementById('pNewBud');
 const pNewBranch    = document.getElementById('pNewBranch');
 
@@ -349,10 +365,41 @@ pRoot.setAttribute('d', S1_ADJ.root);
 pNewFlower2.setAttribute('d', S2.newFlower2);
 pNewBud.setAttribute('d', S2.newBud);
 
-// New element centers (for scale-from-center)
+// Element centers (for scale-from-center)
 const NF2_CX = 283, NF2_CY = 155;
-const NB_CX = 193, NB_CY = 186;
-const BR_OX = 165, BR_OY = 162;  // branch midpoint
+const NB_CX  = 193, NB_CY  = 186;
+const BR_OX  = 165, BR_OY  = 162;  // branch midpoint
+
+// Each new element is attached to a branch, so during growth it should not
+// just pop at its final S2 position — it should start "inward" (closer to
+// the trunk and slightly lower, as if the branch hadn't yet extended it out)
+// and translate outward to the final position while blooming. Offsets are
+// the (dx, dy) at local t=0, collapsing to (0, 0) at local t=1.
+const BUD_ORIGIN_DX = -12, BUD_ORIGIN_DY = 15;
+const F2_ORIGIN_DX  = -30, F2_ORIGIN_DY  = 20;
+const BR_ORIGIN_DX  = -5,  BR_ORIGIN_DY  = 8;
+
+// ── Existing-flower growth overlays ─────────────────────────────────────
+// Each big flower is pinned to a point on its branch: at local t=0 it sits
+// smaller & lower (pushed inward along the branch); at t=1 it's full size
+// at the S2 position. Shape still morphs via flubber; this transform is a
+// stacked scale+translate that provides the "grow with the branch" read.
+//
+// s1c/s2c = measured bbox centers (after S1 pre-shift). The scale anchor
+// interpolates between them so scale-down doesn't visually drag the flower
+// off its own center mid-morph.
+const FLOWERS = [
+  { el: 'main',  s1cx:113, s1cy: 85, s2cx:116, s2cy: 68, s0: 0.50, dy: 20 },
+  { el: 'med',   s1cx:183, s1cy:130, s2cx:187, s2cy: 95, s0: 0.55, dy: 18 },
+  { el: 'left',  s1cx: 28, s1cy:177, s2cx: 44, s2cy:153, s0: 0.50, dy: 18 },
+  { el: 'right', s1cx:267, s1cy:157, s2cx:316, s2cy:147, s0: 0.55, dy: 15 },
+];
+const FLOWER_MAP = {
+  main:  { path: () => pMainFlower,  morph: () => morphMainFlower  },
+  med:   { path: () => pMedFlower,   morph: () => morphMedFlower   },
+  left:  { path: () => pLeftCluster, morph: () => morphLeftCluster },
+  right: { path: () => pRightFlower, morph: () => morphRightFlower },
+};
 
 // Wrapper stays at (0,0) — no animated translate. S1 paths have been
 // pre-shifted above, so the only motion is actual shape growth.
@@ -402,37 +449,63 @@ function renderAt(rawT) {
   pLeftBranch.setAttribute('d',  morphLeftBranch(tBranch));
   pRightBranch.setAttribute('d', morphRightBranch(tBranch));
 
-  // --- Stage 3: existing flowers slide into their stage-2 positions --------
-  // Gentle easeInOutCubic here — they already existed, they just re-home;
-  // a cubic-out would feel too "launched" for something that's just settling.
-  const tFlower = stage(t, 0.40, 0.85, easeInOutCubic);
+  // --- Stage 3: existing flowers ride the branches up from S1 to S2 --------
+  // Timing is synced with trunk/branch growth (starts at t=0) so flowers
+  // visibly travel *with* the tree instead of appearing afterwards.
+  //
+  // Shape morph via flubber, plus a stacked transform:
+  //   (1) translate(0, dy*(1-t))        → starts dy px lower, settles at 0
+  //   (2) scale around (cx,cy) from s0→1 → grows in place on the branch
+  // The scale anchor lerps from S1-shifted center to S2 center so the
+  // shape's own bbox mid-morph still scales around itself, not a drifting
+  // external point.
+  const tFlower = stage(t, 0.00, 0.90, easeOutCubic);
   pSmallFlower.setAttribute('d', morphSmallFlower(tFlower));
-  pRightFlower.setAttribute('d', morphRightFlower(tFlower));
-  pMedFlower.setAttribute('d',   morphMedFlower(tFlower));
-  pMainFlower.setAttribute('d',  morphMainFlower(tFlower));
-  pLeftCluster.setAttribute('d', morphLeftCluster(tFlower));
 
-  // --- Stage 4: new small branch pokes out ---------------------------------
-  const brT = stage(t, 0.50, 0.70, easeOutCubic);
-  pNewBranch.style.opacity = brT;
+  for (const f of FLOWERS) {
+    const { path, morph } = FLOWER_MAP[f.el];
+    const el = path();
+    el.setAttribute('d', morph()(tFlower));
+    const cx = lerp(f.s1cx, f.s2cx, tFlower);
+    const cy = lerp(f.s1cy, f.s2cy, tFlower);
+    const s  = f.s0 + (1 - f.s0) * tFlower;
+    const dy = f.dy * (1 - tFlower);
+    el.setAttribute('transform',
+      `translate(0, ${dy}) ` +
+      `translate(${cx}, ${cy}) scale(${s}) translate(${-cx}, ${-cy})`);
+  }
+
+  // --- Stage 4: new small branch pokes out (synced with branches) ----------
+  const brRaw   = remap(t, 0.20, 0.55);
+  const brScale = easeOutCubic(brRaw);
+  const brDx    = BR_ORIGIN_DX * (1 - brScale);
+  const brDy    = BR_ORIGIN_DY * (1 - brScale);
+  pNewBranch.style.opacity = brScale;
   pNewBranch.setAttribute('transform',
-    `translate(${BR_OX}, ${BR_OY}) scale(${brT}) translate(${-BR_OX}, ${-BR_OY})`);
+    `translate(${brDx}, ${brDy}) ` +
+    `translate(${BR_OX}, ${BR_OY}) scale(${brScale}) translate(${-BR_OX}, ${-BR_OY})`);
 
-  // --- Stage 5: new bud blooms ---------------------------------------------
-  const budRaw   = remap(t, 0.60, 0.90);
-  const budScale = easeOutBack(budRaw);
-  const budOp    = clamp(budRaw * 3, 0, 1);
-  gNewBud.style.opacity = budOp;
+  // --- Stage 5 + 6: the two NEW flower additions — gradual grow-in ---------
+  // No overshoot. Both invisible until 20%, then scale/opacity ramp together
+  // on an easeInOutCubic curve and finish exactly at 100%. Translate tracks
+  // the same curve so the flower reaches its anchor point in sync.
+  const budRaw   = remap(t, 0.20, 1.00);
+  const budEased = easeInOutCubic(budRaw);
+  const budDx    = BUD_ORIGIN_DX * (1 - budEased);
+  const budDy    = BUD_ORIGIN_DY * (1 - budEased);
+  gNewBud.style.opacity = budEased;
   gNewBud.setAttribute('transform',
-    `translate(${NB_CX}, ${NB_CY}) scale(${budScale}) translate(${-NB_CX}, ${-NB_CY})`);
+    `translate(${budDx}, ${budDy}) ` +
+    `translate(${NB_CX}, ${NB_CY}) scale(${budEased}) translate(${-NB_CX}, ${-NB_CY})`);
 
-  // --- Stage 6: second flower cluster is the last to bloom -----------------
-  const f2Raw   = remap(t, 0.75, 1.00);
-  const f2Scale = easeOutBack(f2Raw);
-  const f2Op    = clamp(f2Raw * 3, 0, 1);
-  gNewFlower2.style.opacity = f2Op;
+  const f2Raw   = remap(t, 0.20, 1.00);
+  const f2Eased = easeInOutCubic(f2Raw);
+  const f2Dx    = F2_ORIGIN_DX * (1 - f2Eased);
+  const f2Dy    = F2_ORIGIN_DY * (1 - f2Eased);
+  gNewFlower2.style.opacity = f2Eased;
   gNewFlower2.setAttribute('transform',
-    `translate(${NF2_CX}, ${NF2_CY}) scale(${f2Scale}) translate(${-NF2_CX}, ${-NF2_CY})`);
+    `translate(${f2Dx}, ${f2Dy}) ` +
+    `translate(${NF2_CX}, ${NF2_CY}) scale(${f2Eased}) translate(${-NF2_CX}, ${-NF2_CY})`);
 }
 
 // ═══════════════════════════════════════════════════
