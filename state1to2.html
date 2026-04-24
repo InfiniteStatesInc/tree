@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prayer Tree Growth — States 1–5</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #f5f0eb;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    font-family: -apple-system, sans-serif;
+    gap: 28px;
+  }
+  .stage { width: 320px; height: 380px; }
+  .state-bar { display: flex; gap: 12px; align-items: center; }
+  .state-dot {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    border: 2px solid #cbc3b8;
+    background: #fff;
+    color: #a89880;
+    font-size: 14px; font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .state-dot.active { border-color: #7B5953; background: #7B5953; color: #fff; }
+  .state-dot:not(.active):not(:disabled):hover { border-color: #7B5953; color: #7B5953; }
+  .state-dot:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .scrubber {
+    width: 320px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .scrubber-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .scrubber-label {
+    font-size: 12px;
+    color: #a89880;
+    min-width: 44px;
+  }
+  .scrubber-value {
+    font-size: 12px;
+    color: #a89880;
+    min-width: 36px;
+    text-align: right;
+  }
+  input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 4px;
+    background: #d8d0c6;
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #7B5953;
+    cursor: grab;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  }
+</style>
+</head>
+<body>
+
+<svg class="stage" viewBox="-55 -50 165 162" preserveAspectRatio="xMidYMax meet">
+  <defs>
+    <linearGradient id="gT" x1="55" y1="80" x2="85" y2="115" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7B5953"/><stop offset="1" stop-color="#977775"/>
+    </linearGradient>
+    <linearGradient id="gL1" x1="0.5" y1="0" x2="0.5" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#AAAE8F"/><stop offset="1" stop-color="#746D56"/>
+    </linearGradient>
+    <linearGradient id="gL2" x1="0.5" y1="0" x2="0.5" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#A8AE87"/><stop offset="1" stop-color="#6C644A"/>
+    </linearGradient>
+    <linearGradient id="gFlower" x1="17" y1="0" x2="17" y2="32" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E1CCC9"/><stop offset="1" stop-color="#C18184"/>
+    </linearGradient>
+    <!-- Flower noise: reddish tint like original -->
+    <filter id="noiseFlower" x="-10%" y="-10%" width="120%" height="120%"
+            filterUnits="objectBoundingBox" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="bg"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="bg" result="shape"/>
+      <feTurbulence type="fractalNoise" baseFrequency="80 80" numOctaves="4"
+                    stitchTiles="stitch" seed="7630" result="n"/>
+      <feColorMatrix in="n" type="luminanceToAlpha" result="an"/>
+      <feComponentTransfer in="an" result="cn">
+        <feFuncA type="linear" slope="0.4" intercept="0"/>
+      </feComponentTransfer>
+      <feComposite operator="in" in2="shape" in="cn" result="nc"/>
+      <feFlood flood-color="rgba(99, 0, 10, 0.06)" result="cf"/>
+      <feComposite operator="in" in2="nc" in="cf" result="c"/>
+      <feMerge><feMergeNode in="shape"/><feMergeNode in="c"/></feMerge>
+    </filter>
+
+    <!-- Ultra-fine noise: high frequency + linear alpha + low opacity overlay -->
+    <filter id="noise" x="-10%" y="-10%" width="120%" height="120%"
+            filterUnits="objectBoundingBox" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="bg"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="bg" result="shape"/>
+      <feTurbulence type="fractalNoise" baseFrequency="120 120" numOctaves="4"
+                    stitchTiles="stitch" seed="1277" result="n"/>
+      <feColorMatrix in="n" type="luminanceToAlpha" result="an"/>
+      <feComponentTransfer in="an" result="cn">
+        <feFuncA type="linear" slope="0.6" intercept="0"/>
+      </feComponentTransfer>
+      <feComposite operator="in" in2="shape" in="cn" result="nc"/>
+      <feFlood flood-color="rgba(0,0,0,0.10)" result="cf"/>
+      <feComposite operator="in" in2="nc" in="cf" result="c"/>
+      <feMerge><feMergeNode in="shape"/><feMergeNode in="c"/></feMerge>
+    </filter>
+  </defs>
+
+  <g id="scaleGroup">
+    <path id="shoot" d="" fill="#6D4F49"/>
+    <path id="trunk" d="" fill="url(#gT)" filter="url(#noise)"/>
+    <g id="g1"><path id="leaf1"
+      d="M37.6155 33.4913 L38.5 35.3708 C39.3 -3.02915 13.1667 -2.62915 0 2.37085 C3.14209 2.37085 6.09518 3.87165 7.94734 6.4098 L15.3243 16.519 C17.396 19.358 20.2536 21.5284 23.5443 22.7625 L27.649 24.3017 C32.0418 25.949 35.6179 29.2463 37.6155 33.4913 Z"
+      fill="url(#gL1)" filter="url(#noise)"/></g>
+    <g id="g2"><path id="leaf2"
+      d="M47.2927 25.8817 L46.8445 26.0444 C42.9785 27.4477 39.8108 30.3011 38.0126 34 C37.4518 7.94465 55.7705 8.21606 65 11.6087 C62.7929 11.6087 60.7139 12.645 59.3853 14.4074 L55.0671 20.1354 C53.0864 22.7628 50.3857 24.759 47.2927 25.8817 Z"
+      fill="url(#gL2)" filter="url(#noise)"/></g>
+    <g id="bloomWrap">
+      <path id="bloomLeaf"   d="" fill="url(#gL2)"     filter="url(#noise)"       opacity="0"/>
+      <path id="bloomFlower" d="" fill="url(#gFlower)" filter="url(#noiseFlower)" opacity="0"/>
+    </g>
+  </g>
+</svg>
+
+<div class="state-bar">
+  <button class="state-dot active" data-s="1">1</button>
+  <button class="state-dot" data-s="2">2</button>
+  <button class="state-dot" data-s="3">3</button>
+  <button class="state-dot" data-s="4">4</button>
+  <button class="state-dot" data-s="5">5</button>
+</div>
+
+<div class="scrubber">
+  <div class="scrubber-row">
+    <span class="scrubber-label">Progress</span>
+    <input type="range" id="scrubber" min="0" max="1" step="0.003" value="0">
+    <span class="scrubber-value" id="scrubberVal">0%</span>
+  </div>
+  <div class="scrubber-row">
+    <span class="scrubber-label">Speed</span>
+    <input type="range" id="speedCtrl" min="0.2" max="3" step="0.1" value="1">
+    <span class="scrubber-value" id="speedVal">1.0x</span>
+  </div>
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/flubber@0.4.2/build/flubber.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════
+// Paths — unified 107 × 105 space, bottom at y = 105
+// ═══════════════════════════════════════════════════
+
+// State 1 — mound
+const P_MOUND =
+  'M20.62 102.86 C22.04 101.02 26.36 97.77 38.40 92.29 ' +
+  'C60.54 98.85 58.08 102.54 58.08 102.54 ' +
+  'C59.31 103.15 58.87 105.00 57.50 105.00 ' +
+  'L22.79 105.00 ' +
+  'C21.20 105.00 19.66 104.12 20.62 102.86 Z';
+
+// State 2 — thin Y trunk
+const P_TRUNK2 =
+  'M13 105 C35.8 103 39.1666 65.2042 37.9999 46.8708 ' +
+  'C40.3999 46.8708 39.9999 70.5375 39.4999 82.3708 ' +
+  'C39.0999 99.1708 56.1667 104.5 65 105 L13 105 Z';
+
+// State 3 — curvy split trunk (from 3/枝干.svg, shift -13.5 +28.5 to unified)
+const P_TRUNK3 =
+  'M13 105 C35.8 103 23 60.5 -13.5 28.5 ' +
+  'C14.5 50.5 23 60.5 31.5 81 ' +
+  'C31.5 81 35.852 70.0475 41.5 59.5 ' +
+  'C48.9609 45.567 63 33 54.5 46 ' +
+  'C46 59 34.9894 81 39 91 ' +
+  'C44.5107 98.0392 58.9377 104.6569 65 105 H13 Z';
+
+// State 5 — larger curvy trunk (from 5/枝干1svg.svg, shift -21.25 +26.67 to unified)
+const P_TRUNK5 =
+  'M7.42 105 C35.12 102.57 26.53 57.78 -21.25 26.67 ' +
+  'C7.42 43.89 19.57 50.94 29.89 75.84 ' +
+  'C29.89 75.84 35.42 50.58 48.75 38.50 ' +
+  'C62.97 25.63 64.10 28.67 54.25 39.50 ' +
+  'C37.58 57.83 34.13 75.84 39 87.99 ' +
+  'C45.70 96.55 63.23 104.59 70.59 105 H7.42 Z';
+
+// ── Leaf connection point ──
+const CX = 38, CY = 34;
+
+// ── Per-state leaf props: tx, ty, s (scale around CX/CY), op ──
+// Tip positions:
+//   state 2 trunk tip ~ (38, 46.87)
+//   state 3/4 trunk tips: left(-13.5, 28.5), right(54.5, 46)
+//   state 5 trunk tips:   left(-21.25, 26.67), right(54.25, 39.5)
+const STATES = [
+  null,
+  { l1:{tx:0,   ty:13, s:0, op:0}, l2:{tx:0,   ty:13, s:0, op:0} }, // 1 mound
+  { l1:{tx:0,   ty:13, s:1, op:1}, l2:{tx:0,   ty:13, s:1, op:1} }, // 2 Y trunk
+  { l1:{tx:-46, ty:3,  s:1, op:1}, l2:{tx:14,  ty:17, s:1, op:1} }, // 3 forked
+  { l1:{tx:-46, ty:3,  s:1, op:1}, l2:{tx:14,  ty:17, s:1, op:1} }, // 4 mid-grow
+  { l1:{tx:-54, ty:1,  s:1, op:1}, l2:{tx:14,  ty:11, s:1, op:1} }, // 5 final
+];
+
+// ── Shoot (中枝): parametric tipY animation ──
+// Shape from 4/枝干2.svg (state 4) and 5/枝干2.svg (state 5).
+// Both share the tapered profile; only height differs.
+// Base anchored just below the fork at y=86 in unified coord, shoot grows upward (smaller tipY = taller).
+const SHOOT_BASE_Y = 86;
+const SHOOT_TIP_Y_4 = 23;   // state 4 fully grown: 4/枝干2 height 63 → 86-63=23
+const SHOOT_TIP_Y_5 = -19;  // state 5 fully grown: 5/枝干2 height ~105 → tip pushes higher
+
+// Shoot path: matches 4/枝干2.svg outline (M(rightBase, base) H(leftBase) C... up to tip H closure).
+// Width 11, base at x=25..36, tip at ~x=29.4..32.6 (shoot 4 ends with H7.5625 - same in 5).
+function buildShoot(tipY, baseY) {
+  // Map 4/枝干2 path coords (origin: leftBase=0, base=63) into unified:
+  //   leftBase  → x=25,    base    → y=baseY
+  //   rightBase → x=36,    tip     → y=tipY
+  //   ctrl points y proportionally interpolated
+  const h = baseY - tipY;  // current shoot height
+  // Original control points (in 4/枝干2 local coords): C 2.2 60.7433 4.125 20.0597 4.8125 0
+  //   c1y=60.7433  → ratio 60.74/63 = 0.9641 from base
+  //   c2y=20.0597  → ratio 20.06/63 = 0.3184 from base
+  //   tipY=0       → ratio 0
+  const c1y = baseY - h * 0.0359;   // 60.7433 from base = 2.26 from base
+  const c2y = baseY - h * 0.6816;   // 20.06 from base = 42.94 from base
+  return `M36 ${baseY} H25 C27.2 ${c1y} 29.125 ${c2y} 29.8125 ${tipY} H32.5625 L36 ${baseY} Z`;
+}
+function buildShootCollapsed() {
+  // Shoot collapsed at fork (tipY = baseY = no height)
+  return buildShoot(SHOOT_BASE_Y, SHOOT_BASE_Y);
+}
+
+// ── Small leaf (4/叶子3.svg, 15×25) and Flower (5/花.svg, 34×32) ──
+// Both used as bloom paths, morphed via flubber.
+const P_SMALL_LEAF =
+  'M6.62748 14.1664 L8.28632 15.7525 ' +
+  'C10.5674 17.9336 11.9097 20.9171 12.0287 24.0709 ' +
+  'C20.48 5.94587 7.53095 0.471536 0 0 ' +
+  'L0.975223 4.31769 ' +
+  'C1.46392 6.48138 2.34834 8.53611 3.5839 10.3783 ' +
+  'L4.14504 11.215 ' +
+  'C4.86322 12.2858 5.69558 13.2754 6.62748 14.1664 Z';
+
+const P_FLOWER =
+  'M33.4313 17.6603 C33.996 10.7008 29.4316 10.2993 27.0789 10.9685 ' +
+  'C29.3375 0.261654 20.9617 -0.63067 16.4914 0.261524 ' +
+  'C6.89217 -1.34451 5.43346 6.73032 5.90401 10.9685 ' +
+  'C0.822044 9.89786 0.0221035 14.9836 0.257379 17.6603 ' +
+  'C-2.00127 30.5086 11.1558 33.0175 18.2141 31.6791 ' +
+  'C34.0247 33.2851 35.0782 22.3446 33.4313 17.6603 Z';
+
+// ═══════════════════════════════════════════════════
+// DOM
+// ═══════════════════════════════════════════════════
+const trunkEl        = document.getElementById('trunk');
+const shootEl        = document.getElementById('shoot');
+const g1             = document.getElementById('g1');
+const g2             = document.getElementById('g2');
+const leaf1          = document.getElementById('leaf1');
+const leaf2          = document.getElementById('leaf2');
+const bloomWrap      = document.getElementById('bloomWrap');
+const bloomLeafEl    = document.getElementById('bloomLeaf');
+const bloomFlowerEl  = document.getElementById('bloomFlower');
+const scaleGroup     = document.getElementById('scaleGroup');
+const dots           = document.querySelectorAll('.state-dot');
+
+// Scale anchor: bottom center of the plant
+const SX = 39, SY = 105;
+const SCALE_3 = 1.12;
+const SCALE_4 = 1.27;
+const SCALE_5 = 1.35;
+
+// Bloom anchor positions — placed to match 4/整颗 and 5/整颗 layouts
+const BLOOM_POS_4 = { tx: 19, ty: 4 };    // small leaf position at state 4
+const BLOOM_POS_5 = { tx: 22.13, ty: -59 }; // flower position at state 5
+
+function applyScale(s) {
+  if (s === 1) {
+    scaleGroup.removeAttribute('transform');
+  } else {
+    scaleGroup.setAttribute('transform',
+      `translate(${SX},${SY}) scale(${s}) translate(${-SX},${-SY})`);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// Flubber interpolators
+// ═══════════════════════════════════════════════════
+const morph12 = flubber.interpolate(P_MOUND,   P_TRUNK2, { maxSegmentLength: 1 });
+const morph23 = flubber.interpolate(P_TRUNK2,  P_TRUNK3, { maxSegmentLength: 1 });
+const morph35 = flubber.interpolate(P_TRUNK3,  P_TRUNK5, { maxSegmentLength: 1 });
+const morphBloom = flubber.interpolate(P_SMALL_LEAF, P_FLOWER, { maxSegmentLength: 1 });
+
+// ═══════════════════════════════════════════════════
+// Helpers
+// ═══════════════════════════════════════════════════
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+function easeInOutCubic(t) {
+  return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2;
+}
+function easeOutBack(t) {
+  const c1 = 1.70158, c3 = c1 + 1;
+  return 1 + c3*Math.pow(t-1,3) + c1*Math.pow(t-1,2);
+}
+
+function lerpLeaf(a, b, t) {
+  return { tx:lerp(a.tx,b.tx,t), ty:lerp(a.ty,b.ty,t), s:lerp(a.s,b.s,t), op:lerp(a.op,b.op,t) };
+}
+function lerpPos(a, b, t) {
+  return { tx:lerp(a.tx,b.tx,t), ty:lerp(a.ty,b.ty,t) };
+}
+
+function applyLeaf(gEl, pEl, p) {
+  pEl.style.opacity = p.op;
+  gEl.setAttribute('transform',
+    `translate(${p.tx},${p.ty}) translate(${CX},${CY}) scale(${p.s}) translate(${-CX},${-CY})`);
+}
+
+// Apply bloom (small leaf ↔ flower): both elements share the same morphed path.
+// morphT ∈ [0,1]: 0 = pure leaf shape, 1 = pure flower shape
+// leafOp / flowerOp: independent fade controls
+function applyBloom(pos, morphT, leafOp, flowerOp) {
+  const d = morphBloom(Math.max(0, Math.min(1, morphT)));
+  bloomLeafEl.setAttribute('d', d);
+  bloomFlowerEl.setAttribute('d', d);
+  bloomLeafEl.style.opacity = leafOp;
+  bloomFlowerEl.style.opacity = flowerOp;
+  bloomWrap.setAttribute('transform', `translate(${pos.tx}, ${pos.ty})`);
+}
+
+function hideBloom() {
+  bloomLeafEl.style.opacity = 0;
+  bloomFlowerEl.style.opacity = 0;
+}
+
+function trunkPath(idx) {
+  if (idx === 1) return P_MOUND;
+  if (idx === 2) return P_TRUNK2;
+  if (idx === 5) return P_TRUNK5;
+  return P_TRUNK3; // state 3 or 4
+}
+function scaleFor(idx) {
+  return idx === 5 ? SCALE_5 : idx === 4 ? SCALE_4 : idx === 3 ? SCALE_3 : 1;
+}
+
+function applyState(idx) {
+  const st = STATES[idx];
+  trunkEl.setAttribute('d', trunkPath(idx));
+  applyLeaf(g1, leaf1, st.l1);
+  applyLeaf(g2, leaf2, st.l2);
+  applyScale(scaleFor(idx));
+
+  if (idx === 4) {
+    shootEl.setAttribute('d', buildShoot(SHOOT_TIP_Y_4, SHOOT_BASE_Y));
+    shootEl.style.opacity = 1;
+    applyBloom(BLOOM_POS_4, 0, 1, 0);   // pure small leaf, full opacity
+  } else if (idx === 5) {
+    shootEl.setAttribute('d', buildShoot(SHOOT_TIP_Y_5, SHOOT_BASE_Y));
+    shootEl.style.opacity = 1;
+    applyBloom(BLOOM_POS_5, 1, 0, 1);   // pure flower, full opacity
+  } else {
+    shootEl.setAttribute('d', '');
+    shootEl.style.opacity = 0;
+    hideBloom();
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// Animation engine
+// ═══════════════════════════════════════════════════
+let current = 1;
+let animId  = null;
+
+applyState(1);
+
+function goToState(target) {
+  if (target === current || target < 1 || target > 5) return;
+  if (animId) { cancelAnimationFrame(animId); animId = null; }
+  const chain = [];
+  let s = current;
+  while (s !== target) {
+    const next = s < target ? s+1 : s-1;
+    chain.push([s, next]);
+    s = next;
+  }
+  runChain(chain, 0);
+}
+
+function runChain(chain, idx) {
+  if (idx >= chain.length) { animId = null; return; }
+  const [from, to] = chain[idx];
+  animateStep(from, to, () => {
+    current = to;
+    updateDots();
+    syncScrubber(to);
+    runChain(chain, idx + 1);
+  });
+}
+
+// Per-transition durations (ms, at 1x speed)
+const DURATIONS = { '1-2': 1400, '2-3': 1600, '3-4': 2000, '4-5': 2400 };
+
+function animateStep(from, to, onDone) {
+  const forward = to > from;
+  const key = `${Math.min(from,to)}-${Math.max(from,to)}`;
+  const speed = parseFloat(speedCtrl.value) || 1;
+  const DURATION = (DURATIONS[key] || 1400) / speed;
+  const start = performance.now();
+
+  function frame(now) {
+    const raw   = Math.min(1, (now - start) / DURATION);
+    const t     = easeInOutCubic(raw);
+    const p     = forward ? t : 1 - t;   // eased progress along the transition
+    const rawP  = forward ? raw : 1 - raw;
+
+    renderSegment(key, p, rawP);
+
+    if (raw < 1) {
+      animId = requestAnimationFrame(frame);
+    } else {
+      applyState(to);
+      onDone();
+    }
+  }
+  animId = requestAnimationFrame(frame);
+}
+
+// Render one transition segment at a given eased progress p ∈ [0,1].
+// rawP is linear progress (used for sub-timing windows like leaf emergence).
+function renderSegment(key, p, rawP) {
+  if (key === '1-2') {
+    trunkEl.setAttribute('d', morph12(p));
+    const lr1 = Math.max(0, (rawP - 0.78) / 0.22);
+    const lr2 = Math.max(0, (rawP - 0.82) / 0.18);
+    applyLeaf(g1, leaf1, { tx:STATES[2].l1.tx, ty:STATES[2].l1.ty, s:easeOutBack(lr1), op:Math.min(1,lr1*3) });
+    applyLeaf(g2, leaf2, { tx:STATES[2].l2.tx, ty:STATES[2].l2.ty, s:easeOutBack(lr2), op:Math.min(1,lr2*3) });
+    applyScale(1);
+    shootEl.style.opacity = 0;
+    hideBloom();
+  } else if (key === '2-3') {
+    trunkEl.setAttribute('d', morph23(p));
+    const tLeaf = Math.min(1, p * 1.15);  // leaves lead the trunk base slightly
+    applyLeaf(g1, leaf1, lerpLeaf(STATES[2].l1, STATES[3].l1, tLeaf));
+    applyLeaf(g2, leaf2, lerpLeaf(STATES[2].l2, STATES[3].l2, tLeaf));
+    applyScale(lerp(1, SCALE_3, p));
+    shootEl.style.opacity = 0;
+    hideBloom();
+  } else if (key === '3-4') {
+    // Trunk unchanged (P_TRUNK3). Shoot grows. Small leaf emerges during last 45%.
+    trunkEl.setAttribute('d', P_TRUNK3);
+    applyLeaf(g1, leaf1, STATES[3].l1);
+    applyLeaf(g2, leaf2, STATES[3].l2);
+    applyScale(lerp(SCALE_3, SCALE_4, p));
+
+    shootEl.setAttribute('d', buildShoot(lerp(SHOOT_BASE_Y, SHOOT_TIP_Y_4, p), SHOOT_BASE_Y));
+    shootEl.style.opacity = 1;
+
+    // Small leaf fades in as shoot grows past ~55%; reaches full at end
+    const leafRaw = Math.max(0, (rawP - 0.55) / 0.45);
+    const leafOp  = easeInOutCubic(leafRaw);
+    applyBloom(BLOOM_POS_4, 0, leafOp, 0);
+  } else if (key === '4-5') {
+    // Trunk morphs P_TRUNK3 → P_TRUNK5. Shoot keeps extending.
+    // Bloom shape morphs leaf → flower gradually across the entire duration.
+    // Leaf opacity fades out while flower opacity fades in — overlap so there's no sudden swap.
+    trunkEl.setAttribute('d', morph35(p));
+    applyLeaf(g1, leaf1, lerpLeaf(STATES[4].l1, STATES[5].l1, p));
+    applyLeaf(g2, leaf2, lerpLeaf(STATES[4].l2, STATES[5].l2, p));
+    applyScale(lerp(SCALE_4, SCALE_5, p));
+
+    shootEl.setAttribute('d', buildShoot(lerp(SHOOT_TIP_Y_4, SHOOT_TIP_Y_5, p), SHOOT_BASE_Y));
+    shootEl.style.opacity = 1;
+
+    const pos = lerpPos(BLOOM_POS_4, BLOOM_POS_5, p);
+    // Crossfade: leaf 1→0 over rawP 0→0.7, flower 0→1 over rawP 0.3→1 (overlapping window)
+    const leafOp   = 1 - Math.min(1, rawP / 0.7);
+    const flowerOp = Math.max(0, (rawP - 0.3) / 0.7);
+    applyBloom(pos, p, leafOp, flowerOp);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// Progress scrubber — drag anywhere in the 4-segment timeline
+// ═══════════════════════════════════════════════════
+const scrubber    = document.getElementById('scrubber');
+const scrubberVal = document.getElementById('scrubberVal');
+const speedCtrl   = document.getElementById('speedCtrl');
+const speedVal    = document.getElementById('speedVal');
+
+// 0.00–0.25: 1→2, 0.25–0.50: 2→3, 0.50–0.75: 3→4, 0.75–1.00: 4→5
+function renderAtProgress(p) {
+  p = Math.max(0, Math.min(1, p));
+  if (p <= 0) { applyState(1); return; }
+  if (p >= 1) { applyState(5); return; }
+
+  const seg = 1 / 4;
+  const segIdx = Math.min(Math.floor(p / seg), 3);
+  const localT = (p - segIdx * seg) / seg;
+  const eased = easeInOutCubic(localT);
+
+  const keys = ['1-2', '2-3', '3-4', '4-5'];
+  renderSegment(keys[segIdx], eased, localT);
+}
+
+let scrubbing = false;
+scrubber.addEventListener('input', () => {
+  scrubbing = true;
+  if (animId) { cancelAnimationFrame(animId); animId = null; }
+  const p = parseFloat(scrubber.value);
+  renderAtProgress(p);
+  scrubberVal.textContent = Math.round(p * 100) + '%';
+  const stateNum = p < 0.125 ? 1 : p < 0.375 ? 2 : p < 0.625 ? 3 : p < 0.875 ? 4 : 5;
+  current = stateNum;
+  updateDots();
+});
+scrubber.addEventListener('change', () => { scrubbing = false; });
+
+speedCtrl.addEventListener('input', () => {
+  speedVal.textContent = parseFloat(speedCtrl.value).toFixed(1) + 'x';
+});
+
+function syncScrubber(stateNum) {
+  const p = (stateNum - 1) / 4;
+  scrubber.value = p;
+  scrubberVal.textContent = Math.round(p * 100) + '%';
+}
+
+// ═══════════════════════════════════════════════════
+// State dots
+// ═══════════════════════════════════════════════════
+function updateDots() {
+  dots.forEach(d => d.classList.toggle('active', +d.dataset.s === current));
+}
+dots.forEach(d => d.addEventListener('click', () => {
+  if (d.disabled) return;
+  goToState(+d.dataset.s);
+}));
+
+</script>
+</body>
+</html>
