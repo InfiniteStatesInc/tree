@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tree Growth + Sway Experiments</title>
+<style>
+  body {
+    background: #1a1a1a;
+    color: #ccc;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    max-width: 720px;
+    margin: 40px auto;
+    padding: 0 24px;
+    line-height: 1.6;
+  }
+  h1 { font-weight: 400; color: #fff; font-size: 24px; }
+  h2 { font-weight: 400; font-size: 15px; color: #888; margin-top: 36px; text-transform: uppercase; letter-spacing: 1px; }
+  p { color: #aaa; }
+  a.demo {
+    display: block;
+    padding: 16px 20px;
+    margin: 10px 0;
+    background: #242424;
+    color: #C18184;
+    text-decoration: none;
+    border-radius: 8px;
+    border: 1px solid #333;
+    transition: all 0.15s;
+  }
+  a.demo:hover { background: #2a2a2a; border-color: #C18184; transform: translateY(-1px); }
+  .title { font-weight: 500; font-size: 15px; }
+  .desc { color: #888; font-size: 13px; margin-top: 6px; line-height: 1.5; }
+  code { background: #2a2a2a; padding: 2px 6px; border-radius: 3px; color: #ddd; font-size: 12px; }
+  .tip { color: #666; font-size: 13px; border-left: 2px solid #444; padding: 4px 14px; margin: 20px 0; }
+</style>
+</head>
+<body>
+  <h1>🌳 Tree Growth + Sway Experiments</h1>
+  <p>SVG path-morph 树木生长动画。flubber 做关键帧之间的形变插值，叠加不同方案的自然摇摆。</p>
+
+  <h2>Growth only</h2>
+  <a class="demo" href="./state1to2.html">
+    <div class="title">State 1 → State 2 (基础生长)</div>
+    <div class="desc">阶段 1 到阶段 2 的纯形变生长，阶梯时间窗 + 坐标预平移。无摇摆。</div>
+  </a>
+
+  <h2>Growth + Idle Sway</h2>
+  <a class="demo" href="./growth-experiment-sway-sine.html">
+    <div class="title">方案 2 — 正弦波叠加（无骨骼）</div>
+    <div class="desc">每个元素独立叠加 <code>rotate + translate</code> 的 sin 波，外层 g 做基础整体摆。SVG 结构保持扁平，对后续变形干扰最小。</div>
+  </a>
+  <a class="demo" href="./growth-experiment-sway-bones.html">
+    <div class="title">方案 3 — 骨骼级联（嵌套 g）</div>
+    <div class="desc">SVG 改成 <code>gTree &gt; gLeftArm / gRightArm / gCrown</code> 三级骨骼，子层继承父层旋转，末梢获得真·鞭梢效应。</div>
+  </a>
+
+  <div class="tip">
+    把 <strong>Progress</strong> 拉到 100% 即可看到摇摆。两个 sway 方案都提供 <strong>Wind（风力）</strong>、<strong>Speed（速度）</strong> 滑杆和 <strong>Sway ON/OFF</strong> 按钮，方便对比。
+  </div>
+</body>
+</html>
