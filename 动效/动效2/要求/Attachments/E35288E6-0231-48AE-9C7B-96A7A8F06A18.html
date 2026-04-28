@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Growth + Sway (方案 3: 骨骼级联)</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a1a;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: -apple-system, sans-serif;
+    color: #ccc;
+  }
+  .stage { width: 363px; height: 500px; }
+  .controls {
+    margin-top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 360px;
+  }
+  .control-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .control-row label {
+    width: 64px;
+    font-size: 13px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .control-row input[type="range"] {
+    flex: 1;
+    accent-color: #C18184;
+  }
+  .control-row .value {
+    width: 48px;
+    font-size: 13px;
+    text-align: left;
+    font-variant-numeric: tabular-nums;
+  }
+  .btn-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 4px;
+  }
+  button {
+    padding: 8px 20px;
+    border: 1px solid #555;
+    background: #333;
+    color: #ccc;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  button:hover { background: #444; }
+  button.active { background: #C18184; color: #fff; border-color: #C18184; }
+  h3 {
+    margin-bottom: 12px;
+    font-weight: 400;
+    font-size: 14px;
+    color: #888;
+  }
+</style>
+</head>
+<body>
+
+<h3>方案 3 — 骨骼级联摇摆（嵌套 g）</h3>
+
+<svg class="stage" viewBox="0 0 363 417" preserveAspectRatio="xMidYMax meet">
+  <defs>
+    <!-- Shared noise filter (simplified) -->
+    <filter id="noisePink" x="-10%" y="-10%" width="120%" height="120%"
+            filterUnits="objectBoundingBox" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="bg"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="bg" result="shape"/>
+      <feTurbulence type="fractalNoise" baseFrequency="10 10" numOctaves="3"
+                    stitchTiles="stitch" seed="3546" result="n"/>
+      <feColorMatrix in="n" type="luminanceToAlpha" result="an"/>
+      <feComponentTransfer in="an" result="cn">
+        <feFuncA type="discrete" tableValues="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "/>
+      </feComponentTransfer>
+      <feComposite operator="in" in2="shape" in="coloredNoise1" result="noise1Clipped" />
+      <feFlood flood-color="rgba(154, 70, 70, 0.25)" result="color1Flood" />
+      <feComposite operator="in" in2="noise1Clipped" in="color1Flood" result="color1" />
+      <feMerge><feMergeNode in="shape"/><feMergeNode in="color1"/></feMerge>
+    </filter>
+    <filter id="noiseBranch" x="-10%" y="-10%" width="120%" height="120%"
+            filterUnits="objectBoundingBox" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="bg"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="bg" result="shape"/>
+      <feTurbulence type="fractalNoise" baseFrequency="10 10" numOctaves="3"
+                    stitchTiles="stitch" seed="9117" result="n"/>
+      <feColorMatrix in="n" type="luminanceToAlpha" result="an"/>
+      <feComponentTransfer in="an" result="cn">
+        <feFuncA type="discrete" tableValues="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "/>
+      </feComponentTransfer>
+      <feComposite operator="in" in2="shape" in="coloredNoise1" result="noise1Clipped" />
+      <feFlood flood-color="rgba(0, 0, 0, 0.25)" result="color1Flood" />
+      <feComposite operator="in" in2="noise1Clipped" in="color1Flood" result="color1" />
+      <feMerge><feMergeNode in="shape"/><feMergeNode in="color1"/></feMerge>
+    </filter>
+    <filter id="noiseTrunk" x="-10%" y="-10%" width="120%" height="120%"
+            filterUnits="objectBoundingBox" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="bg"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="bg" result="shape"/>
+      <feTurbulence type="fractalNoise" baseFrequency="10 10" numOctaves="3"
+                    stitchTiles="stitch" seed="4102" result="n"/>
+      <feColorMatrix in="n" type="luminanceToAlpha" result="an"/>
+      <feComponentTransfer in="an" result="cn">
+        <feFuncA type="discrete" tableValues="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "/>
+      </feComponentTransfer>
+      <feComposite operator="in" in2="shape" in="coloredNoise1" result="noise1Clipped" />
+      <feFlood flood-color="rgba(72, 35, 35, 0.25)" result="color1Flood" />
+      <feComposite operator="in" in2="noise1Clipped" in="color1Flood" result="color1" />
+      <feMerge><feMergeNode in="shape"/><feMergeNode in="color1"/></feMerge>
+    </filter>
+
+    <!-- Gradients (use stage 2 values, with IDs that won't collide) -->
+    <linearGradient id="gSmallFlower" x1="9.76" y1="204.2" x2="26.55" y2="205.3" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E1CCC9"/><stop offset="1" stop-color="#C18184"/>
+    </linearGradient>
+    <linearGradient id="gRightFlower" x1="331.8" y1="129" x2="282.8" y2="170" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E1CCC9"/><stop offset="1" stop-color="#C18184"/>
+    </linearGradient>
+    <linearGradient id="gNewFlower2" x1="299.5" y1="138.6" x2="250.6" y2="179.6" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E1CCC9"/><stop offset="1" stop-color="#C18184"/>
+    </linearGradient>
+    <linearGradient id="gMedFlower" x1="187.5" y1="66" x2="187.5" y2="124" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#DEC1B8"/><stop offset="1" stop-color="#AA7B74"/>
+    </linearGradient>
+    <linearGradient id="gMainFlower" x1="116.5" y1="0" x2="116.5" y2="136" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EED8D5"/><stop offset="0.5" stop-color="#DA9F99"/><stop offset="1" stop-color="#C18184"/>
+    </linearGradient>
+    <linearGradient id="gLeftCluster" x1="44.5" y1="118" x2="44.5" y2="190" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E4CBC3"/><stop offset="1" stop-color="#C38584"/>
+    </linearGradient>
+    <linearGradient id="gNewBud" x1="193" y1="165" x2="193" y2="207" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E4CBC3"/><stop offset="1" stop-color="#C38584"/>
+    </linearGradient>
+    <linearGradient id="gLeftBranch" x1="83.5" y1="192" x2="83.5" y2="357.5" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6C5D58"/><stop offset="0.39" stop-color="#896F6A"/><stop offset="1" stop-color="#60433D"/>
+    </linearGradient>
+    <linearGradient id="gRightBranch" x1="227.3" y1="165" x2="227.3" y2="321" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6C5D58"/><stop offset="1" stop-color="#80615D"/>
+    </linearGradient>
+    <linearGradient id="gTrunk" x1="120.3" y1="107" x2="120.3" y2="417" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6C5D58"/><stop offset="0.886" stop-color="#856C67"/><stop offset="1" stop-color="#6B4B46"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Skeleton hierarchy:
+         gTree (root bone, pivots at (113, 417))
+           ├─ pRoot                 (rigid to root bone)
+           ├─ gLeftArm              (left-arm bone; wood layer)
+           │    └─ pLeftBranch
+           ├─ gRightArm             (right-arm bone; wood layer)
+           │    └─ pRightBranch
+           ├─ pTrunk                (drawn above branches; covers seam)
+           ├─ gLeftArmFlowers      [shares gLeftArm's transform]
+           │    ├─ pSmallFlower
+           │    └─ pLeftCluster
+           ├─ gRightArmFlowers     [shares gRightArm's transform]
+           │    ├─ pNewBranch
+           │    ├─ pRightFlower
+           │    └─ grpNewFlower2
+           └─ gCrown                (crown bone; top-of-trunk flowers)
+                ├─ pMedFlower
+                ├─ pMainFlower
+                └─ grpNewBud
+
+       The "wood" arms and "flowers" arms share the same transform string
+       so z-order stays intact (flowers above trunk) while the whole arm
+       still swings as one rigid body. This is the practical way to get
+       bone-chain behaviour without breaking the back-to-front paint order. -->
+  <g id="gTree">
+    <!-- 1. Root -->
+    <path id="pRoot" fill="#AE8B85" filter="url(#noiseTrunk)"/>
+
+    <!-- 2. Left arm bone — wood only -->
+    <g id="gLeftArm">
+      <path id="pLeftBranch" fill="url(#gLeftBranch)" filter="url(#noiseBranch)"/>
+    </g>
+
+    <!-- 3. Right arm bone — wood only -->
+    <g id="gRightArm">
+      <path id="pRightBranch" fill="url(#gRightBranch)" filter="url(#noiseBranch)"/>
+    </g>
+
+    <!-- 4. Trunk covers branch-to-trunk joint -->
+    <path id="pTrunk" fill="url(#gTrunk)" filter="url(#noiseTrunk)"/>
+
+    <!-- 5. Left-arm flowers (same transform as gLeftArm, rendered after trunk) -->
+    <g id="gLeftArmFlowers">
+      <path id="pSmallFlower" fill="url(#gSmallFlower)" filter="url(#noisePink)"/>
+      <path id="pLeftCluster" fill="url(#gLeftCluster)" filter="url(#noisePink)"/>
+    </g>
+
+    <!-- 6. Right-arm flowers & new small branch (same transform as gRightArm) -->
+    <g id="gRightArmFlowers">
+      <path id="pNewBranch" d="M184.5 151L145 169.5L148 174L184.5 151Z" fill="#725C58" opacity="0"/>
+      <path id="pRightFlower" fill="url(#gRightFlower)" filter="url(#noisePink)"/>
+      <g id="grpNewFlower2">
+        <path id="pNewFlower2" fill="url(#gNewFlower2)" filter="url(#noisePink)"/>
+      </g>
+    </g>
+
+    <!-- 7. Crown bone — top-of-trunk flowers -->
+    <g id="gCrown">
+      <path id="pMedFlower" fill="url(#gMedFlower)" filter="url(#noisePink)"/>
+      <path id="pMainFlower" fill="url(#gMainFlower)" filter="url(#noisePink)"/>
+      <g id="grpNewBud">
+        <path id="pNewBud" fill="url(#gNewBud)" filter="url(#noisePink)"/>
+      </g>
+    </g>
+  </g>
+</svg>
+
+<div class="controls">
+  <div class="control-row">
+    <label>Progress</label>
+    <input type="range" id="progress" min="0" max="1000" value="0">
+    <span class="value" id="progressVal">0%</span>
+  </div>
+  <div class="control-row">
+    <label>Duration</label>
+    <input type="range" id="duration" min="1" max="8" value="3" step="0.5">
+    <span class="value" id="durationVal">3s</span>
+  </div>
+  <div class="control-row">
+    <label>Wind</label>
+    <input type="range" id="wind" min="0" max="200" value="100">
+    <span class="value" id="windVal">100%</span>
+  </div>
+  <div class="control-row">
+    <label>Speed</label>
+    <input type="range" id="speed" min="30" max="200" value="100">
+    <span class="value" id="speedVal">1.0×</span>
+  </div>
+  <div class="btn-row">
+    <button id="playBtn">Play</button>
+    <button id="resetBtn">Reset</button>
+    <button id="swayBtn" class="active">Sway: ON</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/flubber@0.4.2/build/flubber.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════
+// Path data — Stage 1 and Stage 2
+// ═══════════════════════════════════════════════════
+
+// Stage 1 paths (312×384 coordinate space)
+const S1 = {
+  smallFlower: "M30.2956 185.687C36.4422 184.973 33.1358 181.109 30.7143 179.267C31.9222 175.546 27.1668 174.463 24.6381 174.387C22.6829 172.694 21.362 174.424 20.9459 175.501C16.013 176.251 16.698 179.831 17.6572 181.528C16.1025 182.869 16.5783 185.838 19.9739 186.703C23.962 189.192 25.836 188.207 26.2745 187.403C29.7603 189.305 30.4076 187.051 30.2956 185.687Z",
+
+  rightFlower: "M249.47 129.563C235.063 146.878 253.48 148.758 264.489 147.533C270.65 160.372 285.901 151.283 292.756 145.134C302.159 144.684 301.296 136.808 299.689 132.926C310.806 118.562 300.008 110.846 293.22 108.784C293.948 101.344 285.239 94.7153 274.119 100.964C257.358 104.42 254.893 111.722 255.756 114.941C241.793 118.682 245.747 126.248 249.47 129.563Z",
+
+  medFlower: "M202.297 77.4321C194.697 71.4321 189.131 77.9321 187.297 81.9321C177.297 79.5321 176.131 87.5988 176.797 91.9321C167.597 91.1321 167.631 99.2655 168.797 103.432C165.597 110.632 172.797 113.432 176.797 113.932C179.597 120.332 184.964 118.599 187.297 116.932C200.297 123.932 203.797 111.932 203.797 110.932C213.297 111.932 208.297 105.432 208.297 104.432C213.097 105.632 213.964 101.599 213.797 99.4321C218.597 93.0321 213.797 89.4321 210.797 88.4321C212.797 78.0321 205.964 76.7654 202.297 77.4321Z",
+
+  mainFlower: "M130.51 7.53652C111.51 -11.9635 104.01 12.5365 103.51 12.5365C98.3104 11.3365 94.0104 14.3698 92.5104 16.0365C87.7104 19.6365 88.5104 25.8698 89.5104 28.5365C83.9104 28.5365 83.5104 31.8698 84.0104 33.5365C75.2104 30.7365 70.3438 38.7032 69.0104 43.0365C66.2104 53.0365 71.1771 58.5365 74.0104 60.0365C73.2104 63.2365 75.6771 65.0365 77.0104 65.5365C68.6104 65.9365 66.8438 74.3698 67.0104 78.5365C68.6104 93.3365 79.0104 94.7032 84.0104 93.5365C92.0104 109.536 104.677 101.87 110.01 96.0365C111.61 98.4365 116.344 95.7032 118.51 94.0365C121.31 96.8365 127.677 95.2032 130.51 94.0365C141.71 98.4365 146.844 89.5365 148.01 84.5365C164.01 82.9365 162.01 72.2032 159.01 67.0365C173.01 67.0365 175.51 54.3698 175.01 48.0365C173.41 26.4365 159.677 26.0365 153.01 28.5365C152.61 17.3365 144.177 16.2032 140.01 17.0365C142.01 5.8365 134.51 6.03651 130.51 7.53652Z",
+
+  leftCluster: "M52.9542 126.606C48.5541 111.006 36.1208 114.439 30.4542 118.106C14.4541 111.306 11.1208 122.273 11.4542 128.606C5.45416 132.206 6.95416 138.439 8.45415 141.106C-7.54585 152.706 2.78749 161.272 9.95415 164.106C12.3542 169.306 18.6208 167.606 21.4542 166.106C24.6542 174.906 33.4542 172.106 37.4542 169.606C44.6542 177.606 53.4542 171.606 56.9542 167.606C81.3541 152.006 71.4541 142.773 63.4542 140.106C69.0542 126.106 58.7875 125.273 52.9542 126.606Z",
+
+  leftBranch: "M116.5 255C126.5 275 126.667 309.667 125.5 324.5L143.5 281L135.5 264C117.9 222.4 91.5 198.667 80.5 192C68.9 184 60 166.667 57 159C57.4 163 60.1667 170.667 61.5 174C59.1 172 50.1667 163.5 46 159.5C48 163.1 63.1667 181 70.5 189.5C62.9 184.3 37.3333 179.667 25.5 178V179C83.1 191.4 106.5 225.167 111 240.5C97.8 232.5 76.5 227.167 67.5 225.5L66 227C90.8 231 110 247.333 116.5 255Z",
+
+  rightBranch: "M225.5 167.5C171.9 219.1 154.5 269.333 152.5 288H142.5L146.5 253.5C150.9 243.5 172 216.333 182 204C199.6 181.6 196 158.667 192 150L193 149.5C195 151.5 196.833 158.667 197.5 162L200 158.5L201 159.5L199 163.5C199.4 164.7 199.167 179.333 199 186.5C211 173.3 250.667 144.667 269 132L270 133.5L261.5 141.5L269.5 139.5V141C256.3 143.4 234.667 159.667 225.5 167.5Z",
+
+  trunk: "M132.5 77C120.9 121 132.333 162.667 139.5 178C139.5 168 149.833 149.833 155 142C155 132.167 154.9 112.3 154.5 111.5C154.1 110.7 156 111.167 157 111.5L158.5 136C164.1 127.6 173.833 114.167 178 108.5L172 121L182 109.5V112.5C153.6 143.3 146.167 176 146 188.5C144.051 204.094 150.492 252.3 154.215 276.184C154.402 277.387 154.307 278.624 153.957 279.79C137.87 333.462 145.566 363.258 151.5 371.5C153.5 375.9 173 381.667 182.5 384H60C61.6 382 79 374.833 87.5 371.5C105.9 357.9 125.167 307.167 132.5 283.5C142.9 241.5 131.5 169.333 124.5 138.5C122.5 134.5 112 111.833 107 101C112.6 111.8 121 122.833 124.5 127C124.5 123.8 123.833 111.667 123.5 106C122.7 101.6 116.833 82.8333 114 74H116C121.6 96 125 100.833 126 100.5L130.5 77H132.5Z",
+
+  root: "M182.5 384C146.9 373.6 148.594 309.333 153.927 277C133.527 351.8 139.073 383 155 384H182.5Z"
+};
+
+// Stage 2 paths (363×417 coordinate space)
+const S2 = {
+  smallFlower: "M23.4951 208.259C31.0241 207.385 26.9741 202.653 24.008 200.395C25.4876 195.838 19.6626 194.511 16.5652 194.418C14.1703 192.345 12.5523 194.464 12.0426 195.782C6.00032 196.701 6.8394 201.087 8.01423 203.165C6.10995 204.808 6.69276 208.445 10.8521 209.504C15.7371 212.553 18.0326 211.346 18.5697 210.362C22.8395 212.692 23.6324 209.931 23.4951 208.259Z",
+
+  rightFlower: "M283.44 153.801C265.038 175.917 288.561 178.317 302.622 176.753C310.492 193.152 329.971 181.543 338.727 173.688C350.737 173.114 349.634 163.054 347.582 158.096C361.781 139.75 347.99 129.895 339.319 127.26C340.249 117.758 329.125 109.292 314.922 117.273C293.515 121.687 290.367 131.013 291.468 135.125C273.634 139.903 278.685 149.567 283.44 153.801Z",
+
+  newFlower2: "M251.205 163.423C232.803 185.539 256.326 187.939 270.387 186.375C278.257 202.774 297.736 191.165 306.492 183.31C318.502 182.736 317.399 172.676 315.347 167.718C329.546 149.372 315.755 139.517 307.085 136.882C308.014 127.38 296.89 118.914 282.687 126.895C261.28 131.309 258.132 140.635 259.233 144.747C241.399 149.525 246.45 159.188 251.205 163.423Z",
+
+  medFlower: "M201.172 69.1977C191.162 61.3089 183.831 69.8551 181.416 75.1143C168.245 71.9588 166.709 82.5648 167.587 88.2623C155.47 87.2105 155.514 97.9042 157.05 103.382C152.836 112.849 162.319 116.53 167.587 117.188C171.275 125.603 178.343 123.324 181.416 121.132C198.538 130.336 203.147 114.558 203.147 113.243C215.66 114.558 209.074 106.012 209.074 104.697C215.396 106.275 216.538 100.972 216.318 98.1233C222.64 89.7086 216.318 84.9753 212.367 83.6605C215.001 69.9866 206.001 68.3212 201.172 69.1977Z",
+
+  mainFlower: "M129.039 9.94304C103.898 -15.7836 93.9734 16.5396 93.3118 16.5396C86.431 14.9565 80.7411 18.9584 78.7562 21.1572C72.4047 25.9067 73.4633 34.1304 74.7865 37.6486C67.3764 37.6486 66.8471 42.0463 67.5087 44.2452C55.8643 40.5511 49.4246 51.0617 47.6603 56.7787C43.9552 69.9718 50.5273 77.2281 54.2764 79.207C53.2178 83.4288 56.4818 85.8036 58.2461 86.4633C47.131 86.991 44.7933 98.1172 45.0138 103.614C47.131 123.14 60.8926 124.943 67.5087 123.404C78.0946 144.513 94.8555 134.398 101.913 126.702C104.03 129.869 110.293 126.263 113.16 124.064C116.865 127.758 125.29 125.603 129.039 124.064C143.859 129.869 150.652 118.127 152.196 111.53C173.367 109.419 170.721 95.2587 166.751 88.4422C185.276 88.4422 188.584 71.7309 187.923 63.3753C185.806 34.8781 167.633 34.3503 158.812 37.6486C158.282 22.8723 147.123 21.3771 141.61 22.4765C144.256 7.70018 134.332 7.96406 129.039 9.94304Z",
+
+  leftCluster: "M65.1073 132.272C59.6975 113.088 44.4107 117.31 37.4435 121.819C17.7714 113.457 13.6731 126.943 14.0829 134.732C6.70591 139.159 8.55016 146.824 10.3944 150.103C-9.27764 164.368 3.42722 174.903 12.2387 178.387C15.1895 184.782 22.8944 182.691 26.3779 180.847C30.3124 191.668 41.132 188.225 46.05 185.151C54.9024 194.989 65.722 187.61 70.0253 182.691C100.025 163.507 87.8531 152.153 78.0171 148.874C84.9023 131.657 72.2794 130.632 65.1073 132.272Z",
+
+  newBud: "M205.04 173.325C201.879 162.135 192.948 164.598 188.877 167.228C177.383 162.35 174.989 170.217 175.228 174.76C170.918 177.343 171.996 181.814 173.073 183.727C161.579 192.048 169.002 198.193 174.151 200.226C175.875 203.956 180.376 202.737 182.412 201.661C184.711 207.973 191.032 205.965 193.906 204.171C199.078 209.91 205.399 205.606 207.914 202.737C225.442 191.546 218.33 184.923 212.583 183.01C216.606 172.967 209.231 172.369 205.04 173.325Z",
+
+  leftBranch: "M115.5 288C125.5 308 125.667 342.667 124.5 357.5L142.5 314L134.5 297C116.9 255.4 92.9 235.404 79.5 225C65.3691 212.515 54.5273 185.465 50.8727 173.5C51.36 179.742 54.7303 191.707 56.3545 196.909C53.4309 193.788 42.5485 180.523 37.4727 174.28C39.9091 179.898 58.3848 207.833 67.3182 221.098C58.06 212.983 26.9152 205.753 12.5 203.152V204.712C82.6673 224.064 105.5 258.167 110 273.5C96.8 265.5 75.5 260.167 66.5 258.5L65 260C89.8 264 109 280.333 115.5 288Z",
+
+  rightBranch: "M243.397 200.5C159.562 252.1 153.5 302.333 151.5 321H141.5L145.5 286.5C149.9 276.5 171 249.333 181 237C198.6 214.6 197.256 191.667 191 183L192.564 182.5C195.692 184.5 198.56 191.667 199.603 195L203.513 191.5L205.077 192.5L201.949 196.5C202.574 197.7 202.209 212.333 201.949 219.5C220.718 206.3 282.761 177.667 311.436 165L313 166.5L299.705 174.5L312.218 172.5V174C291.572 176.4 257.735 192.667 243.397 200.5Z",
+
+  trunk: "M126.57 59.9856C117.213 125.774 128.8 183.785 135.25 209.791C135.25 192.831 140.552 162.019 144.72 148.734C144.72 132.056 144.639 98.3613 144.317 97.0045C143.994 95.6476 145.527 96.4391 146.333 97.0045L147.543 138.557C152.061 124.311 159.912 101.527 163.273 91.9163L158.433 113.117L166.5 93.6124V98.7005C143.591 150.939 152.517 205.821 152.35 220C150.403 237.667 162.18 250.155 166.189 272.173C166.407 273.371 166.315 274.6 165.964 275.765C149.59 330.236 144.564 396.256 150.5 404.5C152.5 408.9 172 414.667 181.5 417H45C59 410 59.5 409.5 66 404.5C84.4 390.9 115.167 356.167 122.5 332.5C132.9 290.5 122.147 196.295 116.5 144C111.647 113.117 92.0333 86.3738 88 68C92.5173 86.3172 117.293 116.226 120.117 123.293C120.117 117.866 119.579 97.2871 119.31 87.6763C118.933 83.3191 117.163 70.6554 115.3 62.2866C114.666 60.2106 113.986 57.946 113.26 55.5H111.647C112.598 52.5391 113.973 56.322 115.3 62.2866C118.609 73.125 120.65 78.8225 121.327 78.348L124.957 59.9856H126.57Z",
+
+  root: "M181.5 417C145.9 406.6 147.594 342.333 152.927 310C132.527 384.8 138.073 416 154 417H181.5Z"
+};
+
+// ═══════════════════════════════════════════════════
+// Coordinate alignment — ANCHOR by trunk base center, not viewBox.
+//
+// If we aligned by viewBox (dx=+25.5), S1's trunk base center lands at
+// x=146.75 but S2's base center is at x=113.25 → 33px horizontal drift
+// during the morph ("tree slides left as it grows"). Instead, pin S1's
+// trunk base center onto S2's so the trunk's vertical axis is fixed
+// throughout and growth only happens upward/outward.
+//
+// Measured base centers (xMin–xMax at the path's yMax):
+//   S1.trunk+root footprint: x∈[60, 182.5]  → center 121.25, y=384
+//   S2.trunk+root footprint: x∈[45, 181.5]  → center 113.25, y=417
+// ═══════════════════════════════════════════════════
+const OFFSET_X = 113.25 - 121.25;  // -8
+const OFFSET_Y = 417    - 384;     //  33
+
+// Shift all absolute coords in an SVG path. Handles M/L/C (x,y pairs),
+// H (x only), V (y only). Our data uses uppercase only.
+function shiftPath(d, dx, dy) {
+  return d.replace(/([MLCHV])([^MLCHVZ]+)/g, (_, cmd, args) => {
+    const nums = args.match(/-?\d+(?:\.\d+)?/g) || [];
+    let shifted;
+    if (cmd === 'H') {
+      shifted = nums.map(n => +(parseFloat(n) + dx).toFixed(4));
+    } else if (cmd === 'V') {
+      shifted = nums.map(n => +(parseFloat(n) + dy).toFixed(4));
+    } else {
+      shifted = nums.map((n, i) =>
+        +(parseFloat(n) + (i % 2 === 0 ? dx : dy)).toFixed(4));
+    }
+    return cmd + shifted.join(' ');
+  });
+}
+
+const S1_ADJ = {};
+for (const k of Object.keys(S1)) S1_ADJ[k] = shiftPath(S1[k], OFFSET_X, OFFSET_Y);
+
+// ═══════════════════════════════════════════════════
+// DOM refs
+// ═══════════════════════════════════════════════════
+const treeGroup     = document.getElementById('gTree');
+// Bone groups — transform targets for the skeleton animation
+const gLeftArm         = document.getElementById('gLeftArm');
+const gLeftArmFlowers  = document.getElementById('gLeftArmFlowers');
+const gRightArm        = document.getElementById('gRightArm');
+const gRightArmFlowers = document.getElementById('gRightArmFlowers');
+const gCrown           = document.getElementById('gCrown');
+const pSmallFlower  = document.getElementById('pSmallFlower');
+const pRightFlower  = document.getElementById('pRightFlower');
+const pMedFlower    = document.getElementById('pMedFlower');
+const pMainFlower   = document.getElementById('pMainFlower');
+const pLeftCluster  = document.getElementById('pLeftCluster');
+const pLeftBranch   = document.getElementById('pLeftBranch');
+const pRightBranch  = document.getElementById('pRightBranch');
+const pTrunk        = document.getElementById('pTrunk');
+const pRoot         = document.getElementById('pRoot');
+const gNewFlower2   = document.getElementById('grpNewFlower2');
+const pNewFlower2   = document.getElementById('pNewFlower2');
+const gNewBud       = document.getElementById('grpNewBud');
+const pNewBud       = document.getElementById('pNewBud');
+const pNewBranch    = document.getElementById('pNewBranch');
+
+// ═══════════════════════════════════════════════════
+// Build flubber interpolators for each element pair
+// ═══════════════════════════════════════════════════
+const OPTS = { maxSegmentLength: 2 };
+
+const morphSmallFlower  = flubber.interpolate(S1_ADJ.smallFlower,  S2.smallFlower,  OPTS);
+const morphRightFlower  = flubber.interpolate(S1_ADJ.rightFlower,  S2.rightFlower,  OPTS);
+const morphMedFlower    = flubber.interpolate(S1_ADJ.medFlower,    S2.medFlower,    OPTS);
+const morphMainFlower   = flubber.interpolate(S1_ADJ.mainFlower,   S2.mainFlower,   OPTS);
+const morphLeftCluster  = flubber.interpolate(S1_ADJ.leftCluster,  S2.leftCluster,  OPTS);
+const morphLeftBranch   = flubber.interpolate(S1_ADJ.leftBranch,   S2.leftBranch,   OPTS);
+const morphRightBranch  = flubber.interpolate(S1_ADJ.rightBranch,  S2.rightBranch,  OPTS);
+const morphTrunk        = flubber.interpolate(S1_ADJ.trunk,        S2.trunk,        OPTS);
+const morphRoot         = flubber.interpolate(S1_ADJ.root,         S2.root,         OPTS);
+
+// Set initial state (stage 1 paths, pre-shifted to stage 2 coord space)
+pSmallFlower.setAttribute('d', S1_ADJ.smallFlower);
+pRightFlower.setAttribute('d', S1_ADJ.rightFlower);
+pMedFlower.setAttribute('d', S1_ADJ.medFlower);
+pMainFlower.setAttribute('d', S1_ADJ.mainFlower);
+pLeftCluster.setAttribute('d', S1_ADJ.leftCluster);
+pLeftBranch.setAttribute('d', S1_ADJ.leftBranch);
+pRightBranch.setAttribute('d', S1_ADJ.rightBranch);
+pTrunk.setAttribute('d', S1_ADJ.trunk);
+pRoot.setAttribute('d', S1_ADJ.root);
+
+// New elements: set their final paths (they'll be scaled from 0)
+pNewFlower2.setAttribute('d', S2.newFlower2);
+pNewBud.setAttribute('d', S2.newBud);
+
+// Element centers (for scale-from-center)
+const NF2_CX = 283, NF2_CY = 155;
+const NB_CX  = 193, NB_CY  = 186;
+const BR_OX  = 165, BR_OY  = 162;  // branch midpoint
+
+// Each new element is attached to a branch, so during growth it should not
+// just pop at its final S2 position — it should start "inward" (closer to
+// the trunk and slightly lower, as if the branch hadn't yet extended it out)
+// and translate outward to the final position while blooming. Offsets are
+// the (dx, dy) at local t=0, collapsing to (0, 0) at local t=1.
+const BUD_ORIGIN_DX = -12, BUD_ORIGIN_DY = 15;
+const F2_ORIGIN_DX  = -30, F2_ORIGIN_DY  = 20;
+const BR_ORIGIN_DX  = -5,  BR_ORIGIN_DY  = 8;
+
+// ── Existing-flower growth overlays ─────────────────────────────────────
+// Each big flower is pinned to a point on its branch: at local t=0 it sits
+// smaller & lower (pushed inward along the branch); at t=1 it's full size
+// at the S2 position. Shape still morphs via flubber; this transform is a
+// stacked scale+translate that provides the "grow with the branch" read.
+//
+// s1c/s2c = measured bbox centers (after S1 pre-shift). The scale anchor
+// interpolates between them so scale-down doesn't visually drag the flower
+// off its own center mid-morph.
+const FLOWERS = [
+  { el: 'main',  s1cx:113, s1cy: 85, s2cx:116, s2cy: 68, s0: 0.50, dy: 20 },
+  { el: 'med',   s1cx:183, s1cy:130, s2cx:187, s2cy: 95, s0: 0.55, dy: 18 },
+  { el: 'left',  s1cx: 28, s1cy:177, s2cx: 44, s2cy:153, s0: 0.50, dy: 18 },
+  { el: 'right', s1cx:267, s1cy:157, s2cx:316, s2cy:147, s0: 0.55, dy: 15 },
+];
+const FLOWER_MAP = {
+  main:  { path: () => pMainFlower,  morph: () => morphMainFlower  },
+  med:   { path: () => pMedFlower,   morph: () => morphMedFlower   },
+  left:  { path: () => pLeftCluster, morph: () => morphLeftCluster },
+  right: { path: () => pRightFlower, morph: () => morphRightFlower },
+};
+
+// Wrapper stays at (0,0) — no animated translate. S1 paths have been
+// pre-shifted above, so the only motion is actual shape growth.
+treeGroup.removeAttribute('transform');
+
+// ═══════════════════════════════════════════════════
+// Helpers
+// ═══════════════════════════════════════════════════
+function lerp(a, b, t) { return a + (b - a) * t; }
+function easeInOutCubic(t) {
+  return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2;
+}
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+function easeOutBack(t) {
+  const c1 = 1.70158, c3 = c1 + 1;
+  return 1 + c3*Math.pow(t-1,3) + c1*Math.pow(t-1,2);
+}
+function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
+function remap(t, s, e) { return clamp((t - s) / (e - s), 0, 1); }
+// Stagger helper: raw progress t, remap into a local [start..end] window, then ease.
+function stage(t, start, end, ease) {
+  return ease(remap(t, start, end));
+}
+
+// ═══════════════════════════════════════════════════
+// Skeleton sway — hierarchical bones.
+//
+// Unlike the sine-overlay version, every element here inherits its parent
+// bone's rotation. A flower on the left arm ends up visually rotated by
+// (tree_rot + leftArm_rot); a flower on the crown gets (tree_rot + crown_rot).
+// That stacking is what gives the tree its "tip moves more than the base"
+// read for free — it's not faked with different amplitudes, it emerges
+// from the hierarchy.
+//
+// Each bone has its own frequency and phase so the chain doesn't lock
+// onto a single sine wave. The second harmonic (2.3× freq) adds wind-like
+// flutter.
+//
+// Flutter portability: the bone structure maps directly onto nested
+// Transform.rotate widgets (or a CustomPainter's canvas.save + rotate +
+// restore stack). No DOM-specific trick is used, just transform strings.
+// ═══════════════════════════════════════════════════
+const BONE_PARAMS = {
+  // Root bone: entire tree sways slightly around the base.
+  tree:     { rotAmp: 0.35, freq: 0.22, phase: 0.0,  pivotX: 113, pivotY: 417 },
+  // Arm bones pivot at their attachment point on the trunk.
+  leftArm:  { rotAmp: 0.9,  freq: 0.27, phase: 0.35, pivotX: 120, pivotY: 290 },
+  rightArm: { rotAmp: 0.9,  freq: 0.26, phase: 0.55, pivotX: 115, pivotY: 260 },
+  // Crown pivots near the top of the trunk.
+  crown:    { rotAmp: 1.1,  freq: 0.31, phase: 0.8,  pivotX: 140, pivotY: 130 },
+};
+
+let WIND = 1.0;
+let SPEED = 1.0;
+let SWAY_ON = true;
+
+function swayEnvelope(t) {
+  return stage(t, 0.75, 1.0, easeInOutCubic);
+}
+
+function boneRotate(key, now, envelope) {
+  const p = BONE_PARAMS[key];
+  const tsec = now / 1000;
+  const w = 2 * Math.PI * p.freq * SPEED;
+  const base    = Math.sin(w * tsec + p.phase);
+  const flutter = 0.3 * Math.sin(w * 2.3 * tsec + p.phase * 1.7);
+  const wave = (base + flutter) * envelope * WIND;
+  return { rot: p.rotAmp * wave, pivotX: p.pivotX, pivotY: p.pivotY };
+}
+
+function boneStr(b) {
+  return `rotate(${b.rot.toFixed(3)} ${b.pivotX} ${b.pivotY})`;
+}
+
+// ═══════════════════════════════════════════════════
+// Render at progress t (0..1) — CASCADED growth timings
+// ═══════════════════════════════════════════════════
+//
+// The "growth" feel comes from three things, copied from state1to2.html:
+//   (1) Bottom-to-top stagger: trunk extends first, branches second,
+//       flowers ride the branches, new elements bloom last.
+//   (2) easeOutCubic on structural morphs (fast initial reach, slow settle)
+//       → reads as "being pulled out" rather than "crossfading".
+//   (3) easeOutBack scale-pop on new elements → the "bloom" cue. Fade-in
+//       doesn't read as biological; a tiny overshoot does.
+// ═══════════════════════════════════════════════════
+function renderAt(rawT, now) {
+  const t = clamp(rawT, 0, 1);
+  if (now === undefined) now = performance.now();
+
+  // ── Apply bone rotations first. During growth these stay at 0 (env=0)
+  //    so the skeleton doesn't interfere with path morphing. Only in the
+  //    last quarter (env ramps 0→1 across t=0.75..1.0) do the bones start
+  //    to rotate, blending the sway seamlessly into the idle state.
+  const env = SWAY_ON ? swayEnvelope(t) : 0;
+  if (env > 0) {
+    treeGroup.setAttribute('transform', boneStr(boneRotate('tree', now, env)));
+    const la = boneStr(boneRotate('leftArm',  now, env));
+    const ra = boneStr(boneRotate('rightArm', now, env));
+    const cr = boneStr(boneRotate('crown',    now, env));
+    gLeftArm.setAttribute('transform', la);
+    gLeftArmFlowers.setAttribute('transform', la);
+    gRightArm.setAttribute('transform', ra);
+    gRightArmFlowers.setAttribute('transform', ra);
+    gCrown.setAttribute('transform', cr);
+  } else {
+    treeGroup.removeAttribute('transform');
+    gLeftArm.removeAttribute('transform');
+    gLeftArmFlowers.removeAttribute('transform');
+    gRightArm.removeAttribute('transform');
+    gRightArmFlowers.removeAttribute('transform');
+    gCrown.removeAttribute('transform');
+  }
+
+  // --- Stage 1: trunk + root extend (base) ---------------------------------
+  const tTrunk = stage(t, 0.00, 0.55, easeOutCubic);
+  pTrunk.setAttribute('d', morphTrunk(tTrunk));
+  pRoot.setAttribute('d',  morphRoot(tTrunk));
+
+  // --- Stage 2: branches reach out (tips lead the base) --------------------
+  const tBranch = stage(t, 0.15, 0.65, easeOutCubic);
+  pLeftBranch.setAttribute('d',  morphLeftBranch(tBranch));
+  pRightBranch.setAttribute('d', morphRightBranch(tBranch));
+
+  // --- Stage 3: existing flowers ride the branches up from S1 to S2 --------
+  // Timing is synced with trunk/branch growth (starts at t=0) so flowers
+  // visibly travel *with* the tree instead of appearing afterwards.
+  //
+  // Shape morph via flubber, plus a stacked transform:
+  //   (1) translate(0, dy*(1-t))        → starts dy px lower, settles at 0
+  //   (2) scale around (cx,cy) from s0→1 → grows in place on the branch
+  // The scale anchor lerps from S1-shifted center to S2 center so the
+  // shape's own bbox mid-morph still scales around itself, not a drifting
+  // external point.
+  const tFlower = stage(t, 0.00, 0.90, easeOutCubic);
+  pSmallFlower.setAttribute('d', morphSmallFlower(tFlower));
+
+  for (const f of FLOWERS) {
+    const { path, morph } = FLOWER_MAP[f.el];
+    const el = path();
+    el.setAttribute('d', morph()(tFlower));
+    const cx = lerp(f.s1cx, f.s2cx, tFlower);
+    const cy = lerp(f.s1cy, f.s2cy, tFlower);
+    const s  = f.s0 + (1 - f.s0) * tFlower;
+    const dy = f.dy * (1 - tFlower);
+    el.setAttribute('transform',
+      `translate(0, ${dy}) ` +
+      `translate(${cx}, ${cy}) scale(${s}) translate(${-cx}, ${-cy})`);
+  }
+
+  // --- Stage 4: new small branch pokes out (synced with branches) ----------
+  const brRaw   = remap(t, 0.20, 0.55);
+  const brScale = easeOutCubic(brRaw);
+  const brDx    = BR_ORIGIN_DX * (1 - brScale);
+  const brDy    = BR_ORIGIN_DY * (1 - brScale);
+  pNewBranch.style.opacity = brScale;
+  pNewBranch.setAttribute('transform',
+    `translate(${brDx}, ${brDy}) ` +
+    `translate(${BR_OX}, ${BR_OY}) scale(${brScale}) translate(${-BR_OX}, ${-BR_OY})`);
+
+  // --- Stage 5 + 6: the two NEW flower additions — gradual grow-in ---------
+  // No overshoot. Both invisible until 20%, then scale/opacity ramp together
+  // on an easeInOutCubic curve and finish exactly at 100%. Translate tracks
+  // the same curve so the flower reaches its anchor point in sync.
+  const budRaw   = remap(t, 0.20, 1.00);
+  const budEased = easeInOutCubic(budRaw);
+  const budDx    = BUD_ORIGIN_DX * (1 - budEased);
+  const budDy    = BUD_ORIGIN_DY * (1 - budEased);
+  gNewBud.style.opacity = budEased;
+  gNewBud.setAttribute('transform',
+    `translate(${budDx}, ${budDy}) ` +
+    `translate(${NB_CX}, ${NB_CY}) scale(${budEased}) translate(${-NB_CX}, ${-NB_CY})`);
+
+  const f2Raw   = remap(t, 0.20, 1.00);
+  const f2Eased = easeInOutCubic(f2Raw);
+  const f2Dx    = F2_ORIGIN_DX * (1 - f2Eased);
+  const f2Dy    = F2_ORIGIN_DY * (1 - f2Eased);
+  gNewFlower2.style.opacity = f2Eased;
+  gNewFlower2.setAttribute('transform',
+    `translate(${f2Dx}, ${f2Dy}) ` +
+    `translate(${NF2_CX}, ${NF2_CY}) scale(${f2Eased}) translate(${-NF2_CX}, ${-NF2_CY})`);
+}
+
+// ═══════════════════════════════════════════════════
+// Controls
+// ═══════════════════════════════════════════════════
+const progressSlider = document.getElementById('progress');
+const progressVal    = document.getElementById('progressVal');
+const durationSlider = document.getElementById('duration');
+const durationVal    = document.getElementById('durationVal');
+const windSlider     = document.getElementById('wind');
+const windVal        = document.getElementById('windVal');
+const speedSlider    = document.getElementById('speed');
+const speedVal       = document.getElementById('speedVal');
+const playBtn        = document.getElementById('playBtn');
+const resetBtn       = document.getElementById('resetBtn');
+const swayBtn        = document.getElementById('swayBtn');
+
+let rafId = null, playing = false, growthStart = 0, holdingAt1 = false;
+
+progressSlider.addEventListener('input', () => {
+  const t = progressSlider.value / 1000;
+  progressVal.textContent = Math.round(t * 100) + '%';
+  if (playing) stopGrowth();
+  if (t >= 1) startIdleSway();
+  else { stopIdleSway(); renderAt(t); }
+});
+
+durationSlider.addEventListener('input', () => {
+  durationVal.textContent = durationSlider.value + 's';
+});
+windSlider.addEventListener('input', () => {
+  WIND = windSlider.value / 100;
+  windVal.textContent = windSlider.value + '%';
+});
+speedSlider.addEventListener('input', () => {
+  SPEED = speedSlider.value / 100;
+  speedVal.textContent = SPEED.toFixed(1) + '×';
+});
+swayBtn.addEventListener('click', () => {
+  SWAY_ON = !SWAY_ON;
+  swayBtn.textContent = 'Sway: ' + (SWAY_ON ? 'ON' : 'OFF');
+  swayBtn.classList.toggle('active', SWAY_ON);
+  if (holdingAt1 || progressSlider.value >= 1000) {
+    if (SWAY_ON) startIdleSway();
+    else { stopIdleSway(); renderAt(1); }
+  }
+});
+
+function stopGrowth() {
+  if (rafId) cancelAnimationFrame(rafId);
+  rafId = null;
+  playing = false;
+  playBtn.textContent = 'Play';
+  playBtn.classList.remove('active');
+}
+function stopIdleSway() {
+  if (holdingAt1 && rafId) cancelAnimationFrame(rafId);
+  rafId = null;
+  holdingAt1 = false;
+}
+function startIdleSway() {
+  stopIdleSway();
+  holdingAt1 = true;
+  function idleTick(now) {
+    renderAt(1, now);
+    if (holdingAt1) rafId = requestAnimationFrame(idleTick);
+  }
+  rafId = requestAnimationFrame(idleTick);
+}
+
+function startGrowth() {
+  const dur = parseFloat(durationSlider.value) * 1000;
+  const startVal = progressSlider.value / 1000;
+  growthStart = performance.now() - startVal * dur;
+  playing = true;
+  playBtn.textContent = 'Pause';
+  playBtn.classList.add('active');
+  stopIdleSway();
+
+  function tick(now) {
+    const t = Math.min((now - growthStart) / dur, 1);
+    progressSlider.value = Math.round(t * 1000);
+    progressVal.textContent = Math.round(t * 100) + '%';
+    renderAt(t, now);
+    if (t < 1) {
+      rafId = requestAnimationFrame(tick);
+    } else {
+      playing = false;
+      playBtn.textContent = 'Play';
+      playBtn.classList.remove('active');
+      startIdleSway();
+    }
+  }
+  rafId = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener('click', () => {
+  if (playing) { stopGrowth(); return; }
+  if (progressSlider.value >= 1000) {
+    progressSlider.value = 0;
+    renderAt(0);
+  }
+  startGrowth();
+});
+
+resetBtn.addEventListener('click', () => {
+  stopGrowth();
+  stopIdleSway();
+  progressSlider.value = 0;
+  progressVal.textContent = '0%';
+  renderAt(0);
+});
+
+// Init
+renderAt(0);
+</script>
+</body>
+</html>

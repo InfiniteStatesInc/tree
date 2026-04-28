@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>樱花树 · 骨骼摇摆 + 花瓣飘落</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #F3EEE8;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: -apple-system, "PingFang SC", sans-serif;
+    color: #555;
+    padding: 16px;
+  }
+  .stage-wrap {
+    width: min(520px, 92vw);
+    aspect-ratio: 661 / 527;
+    position: relative;
+  }
+  svg.stage {
+    width: 100%;
+    height: 100%;
+    display: block;
+    overflow: visible;
+  }
+  .controls {
+    margin-top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: min(480px, 92vw);
+  }
+  .control-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .control-row label {
+    width: 72px;
+    font-size: 13px;
+    text-align: right;
+    flex-shrink: 0;
+    color: #7a6e69;
+  }
+  .control-row input[type="range"] {
+    flex: 1;
+    accent-color: #C18184;
+  }
+  .control-row .value {
+    width: 52px;
+    font-size: 13px;
+    text-align: left;
+    font-variant-numeric: tabular-nums;
+    color: #555;
+  }
+  .btn-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 4px;
+  }
+  button {
+    padding: 7px 18px;
+    border: 1px solid #c9bdb9;
+    background: #f8f3ef;
+    color: #6b5a55;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  button:hover { background: #efe6e0; }
+  button.active { background: #C18184; color: #fff; border-color: #C18184; }
+  h3 {
+    margin-bottom: 16px;
+    font-weight: 400;
+    font-size: 14px;
+    color: #998a84;
+    letter-spacing: 0.5px;
+  }
+</style>
+</head>
+<body>
+
+<h3>樱花树 · 骨骼摇摆 + 花瓣飘落</h3>
+
+<div class="stage-wrap">
+<svg class="stage" viewBox="0 0 661 527" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <!-- ========= 花瓣渐变（模板 d 数据在 JS 里） ========= -->
+    <linearGradient id="pGradA" x1="5" y1="0" x2="5" y2="14" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E56B67"/><stop offset="1" stop-color="#DF9895"/>
+    </linearGradient>
+    <linearGradient id="pGradB" x1="0.515961" y1="4.21881" x2="9.01596" y2="8.71881" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#DB7B7B"/><stop offset="1" stop-color="#E7B3B3"/>
+    </linearGradient>
+
+    <!-- ========= 整颗.svg 所有 filter / gradient 定义（原样保留） ========= -->
+    <filter id="filter0_n_1113_3" x="501" y="275" width="107" height="57" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+      <feTurbulence type="fractalNoise" baseFrequency="2 2" stitchTiles="stitch" numOctaves="3" result="noise" seed="4240" />
+      <feColorMatrix in="noise" type="luminanceToAlpha" result="alphaNoise" />
+      <feComponentTransfer in="alphaNoise" result="coloredNoise1"><feFuncA type="discrete" tableValues="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "/></feComponentTransfer>
+      <feComposite operator="in" in2="shape" in="coloredNoise1" result="noise1Clipped" />
+      <feFlood flood-color="rgba(240, 105, 105, 0.25)" result="color1Flood" />
+      <feComposite operator="in" in2="noise1Clipped" in="color1Flood" result="color1" />
+      <feMerge><feMergeNode in="shape" /><feMergeNode in="color1" /></feMerge>
+    </filter>
+    <filter id="filter1_n_1113_3" x="0" y="213" width="137" height="116" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+      <feTurbulence type="fractalNoise" baseFrequency="2 2" stitchTiles="stitch" numOctaves="3" result="noise" seed="4240" />
+      <feColorMatrix in="noise" type="luminanceToAlpha" result="alphaNoise" />
+      <feComponentTransfer in="alphaNoise" result="coloredNoise1"><feFuncA type="discrete" tableValues="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "/></feComponentTransfer>
+      <feComposite operator="in" in2="shape" in="coloredNoise1" result="noise1Clipped" />
+      <feFlood flood-color="rgba(240, 105, 105, 0.25)" result="color1Flood" />
+      <feComposite operator="in" in2="noise1Clipped" in="color1Flood" result="color1" />
+      <feMerge><feMergeNode in="shape" /><feMergeNode in="color1" /></feMerge>
+    </filter>
+    <filter id="filter2_n_1113_3" x="371.354" y="129.507" width="182.637" height="163.714" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+      <feTurbulence type="fractalNoise" baseFrequency="2 2" stitchTiles="stitch" numOctaves="3" result="noise" seed="4240" />
+      <feColorMatrix in="noise" type="luminanceToAlpha" result="alphaNoise" />
+      <feComponentTransfer in="alphaNoise" result="coloredNoise1"><feFuncA type="discrete" tableValues="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "/></feComponentTransfer>
+      <feComposite operator="in" in2="shape" in="coloredNoise1" result="noise1Clipped" />
+      <feFlood flood-color="rgba(240, 105, 105, 0.25)" result="color1Flood" />
+      <feComposite operator="in" in2="noise1Clipped" in="color1Flood" result="color1" />
+      <feMerge><feMergeNode in="shape" /><feMergeNode in="color1" /></feMerge>
+    </filter>
+    <filter id="filter3_n_1113_3" x="83" y="107" width="210" height="150" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+      <feTurbulence type="fractalNoise" baseFrequency="2 2" stitchTiles="stitch" numOctaves="3" result="noise" seed="4240" />
+      <feColorMatrix in="noise" type="luminanceToAlpha" result="alphaNoise" />
+      <feComponentTransfer in="alphaNoise" result="coloredNoise1"><feFuncA type="discrete" tableValues="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "/></feComponentTransfer>
+      <feComposite operator="in" in2="shape" in="coloredNoise1" result="noise1Clipped" />
+      <feFlood flood-color="rgba(240, 105, 105, 0.25)" result="color1Flood" />
+      <feComposite operator="in" in2="noise1Clipped" in="color1Flood" result="color1" />
+      <feMerge><feMergeNode in="shape" /><feMergeNode in="color1" /></feMerge>
+    </filter>
+    <filter id="filter4_n_1113_3" x="181" y="76" width="156" height="111" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+      <feTurbulence type="fractalNoise" baseFrequency="2 2" stitchTiles="stitch" numOctaves="3" result="noise" seed="4240" />
+      <feColorMatrix in="noise" type="luminanceToAlpha" result="alphaNoise" />
+      <feComponentTransfer in="alphaNoise" result="coloredNoise1"><feFuncA type="discrete" tableValues="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "/></feComponentTransfer>
+      <feComposite operator="in" in2="shape" in="coloredNoise1" result="noise1Clipped" />
+      <feFlood flood-color="rgba(240, 105, 105, 0.25)" result="color1Flood" />
+      <feComposite operator="in" in2="noise1Clipped" in="color1Flood" result="color1" />
+      <feMerge><feMergeNode in="shape" /><feMergeNode in="color1" /></feMerge>
+    </filter>
+    <filter id="filter5_n_1113_3" x="137" y="125" width="262" height="106" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+      <feTurbulence type="fractalNoise" baseFrequency="2 2" stitchTiles="stitch" numOctaves="3" result="noise" seed="4240" />
+      <feColorMatrix in="noise" type="luminanceToAlpha" result="alphaNoise" />
+      <feComponentTransfer in="alphaNoise" result="coloredNoise1"><feFuncA type="discrete" tableValues="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "/></feComponentTransfer>
+      <feComposite operator="in" in2="shape" in="coloredNoise1" result="noise1Clipped" />
+      <feFlood flood-color="rgba(240, 105, 105, 0.25)" result="color1Flood" />
+      <feComposite operator="in" in2="noise1Clipped" in="color1Flood" result="color1" />
+      <feMerge><feMergeNode in="shape" /><feMergeNode in="color1" /></feMerge>
+    </filter>
+    <filter id="filter6_n_1113_3" x="243" y="84" width="256" height="117" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+      <feTurbulence type="fractalNoise" baseFrequency="2 2" stitchTiles="stitch" numOctaves="3" result="noise" seed="4240" />
+      <feColorMatrix in="noise" type="luminanceToAlpha" result="alphaNoise" />
+      <feComponentTransfer in="alphaNoise" result="coloredNoise1"><feFuncA type="discrete" tableValues="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "/></feComponentTransfer>
+      <feComposite operator="in" in2="shape" in="coloredNoise1" result="noise1Clipped" />
+      <feFlood flood-color="rgba(240, 105, 105, 0.25)" result="color1Flood" />
+      <feComposite operator="in" in2="noise1Clipped" in="color1Flood" result="color1" />
+      <feMerge><feMergeNode in="shape" /><feMergeNode in="color1" /></feMerge>
+    </filter>
+    <filter id="filter7_n_1113_3" x="221" y="193" width="217" height="92" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+      <feTurbulence type="fractalNoise" baseFrequency="2 2" stitchTiles="stitch" numOctaves="3" result="noise" seed="4240" />
+      <feColorMatrix in="noise" type="luminanceToAlpha" result="alphaNoise" />
+      <feComponentTransfer in="alphaNoise" result="coloredNoise1"><feFuncA type="discrete" tableValues="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "/></feComponentTransfer>
+      <feComposite operator="in" in2="shape" in="coloredNoise1" result="noise1Clipped" />
+      <feFlood flood-color="rgba(240, 105, 105, 0.25)" result="color1Flood" />
+      <feComposite operator="in" in2="noise1Clipped" in="color1Flood" result="color1" />
+      <feMerge><feMergeNode in="shape" /><feMergeNode in="color1" /></feMerge>
+    </filter>
+    <filter id="filter8_n_1113_3" x="336" y="0" width="325" height="317" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+      <feTurbulence type="fractalNoise" baseFrequency="10 10" stitchTiles="stitch" numOctaves="3" result="noise" seed="9372" />
+      <feColorMatrix in="noise" type="luminanceToAlpha" result="alphaNoise" />
+      <feComponentTransfer in="alphaNoise" result="coloredNoise1"><feFuncA type="discrete" tableValues="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "/></feComponentTransfer>
+      <feComposite operator="in" in2="shape" in="coloredNoise1" result="noise1Clipped" />
+      <feFlood flood-color="rgba(235, 63, 63, 0.2)" result="color1Flood" />
+      <feComposite operator="in" in2="noise1Clipped" in="color1Flood" result="color1" />
+      <feMerge><feMergeNode in="shape" /><feMergeNode in="color1" /></feMerge>
+    </filter>
+    <filter id="filter9_n_1113_3" x="55" y="176" width="282" height="232" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+      <feTurbulence type="fractalNoise" baseFrequency="10 10" stitchTiles="stitch" numOctaves="3" result="noise" seed="6985" />
+      <feColorMatrix in="noise" type="luminanceToAlpha" result="alphaNoise" />
+      <feComponentTransfer in="alphaNoise" result="coloredNoise1"><feFuncA type="discrete" tableValues="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "/></feComponentTransfer>
+      <feComposite operator="in" in2="shape" in="coloredNoise1" result="noise1Clipped" />
+      <feFlood flood-color="rgba(113, 25, 25, 0.24)" result="color1Flood" />
+      <feComposite operator="in" in2="noise1Clipped" in="color1Flood" result="color1" />
+      <feMerge><feMergeNode in="shape" /><feMergeNode in="color1" /></feMerge>
+    </filter>
+    <filter id="filter10_n_1113_3" x="223.157" y="58" width="258.804" height="469" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+      <feTurbulence type="fractalNoise" baseFrequency="10 10" stitchTiles="stitch" numOctaves="3" result="noise" seed="6985" />
+      <feColorMatrix in="noise" type="luminanceToAlpha" result="alphaNoise" />
+      <feComponentTransfer in="alphaNoise" result="coloredNoise1"><feFuncA type="discrete" tableValues="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "/></feComponentTransfer>
+      <feComposite operator="in" in2="shape" in="coloredNoise1" result="noise1Clipped" />
+      <feFlood flood-color="rgba(113, 25, 25, 0.13)" result="color1Flood" />
+      <feComposite operator="in" in2="noise1Clipped" in="color1Flood" result="color1" />
+      <feMerge><feMergeNode in="shape" /><feMergeNode in="color1" /></feMerge>
+    </filter>
+    <filter id="filter11_n_1113_3" x="321.686" y="232.412" width="263.402" height="180.83" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+      <feTurbulence type="fractalNoise" baseFrequency="10 10" stitchTiles="stitch" numOctaves="3" result="noise" seed="6985" />
+      <feColorMatrix in="noise" type="luminanceToAlpha" result="alphaNoise" />
+      <feComponentTransfer in="alphaNoise" result="coloredNoise1"><feFuncA type="discrete" tableValues="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "/></feComponentTransfer>
+      <feComposite operator="in" in2="shape" in="coloredNoise1" result="noise1Clipped" />
+      <feFlood flood-color="rgba(140, 67, 67, 0.24)" result="color1Flood" />
+      <feComposite operator="in" in2="noise1Clipped" in="color1Flood" result="color1" />
+      <feMerge><feMergeNode in="shape" /><feMergeNode in="color1" /></feMerge>
+    </filter>
+    <filter id="filter12_n_1113_3" x="204" y="129" width="208" height="111" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+      <feTurbulence type="fractalNoise" baseFrequency="2 2" stitchTiles="stitch" numOctaves="3" result="noise" seed="4240" />
+      <feColorMatrix in="noise" type="luminanceToAlpha" result="alphaNoise" />
+      <feComponentTransfer in="alphaNoise" result="coloredNoise1"><feFuncA type="discrete" tableValues="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "/></feComponentTransfer>
+      <feComposite operator="in" in2="shape" in="coloredNoise1" result="noise1Clipped" />
+      <feFlood flood-color="rgba(240, 105, 105, 0.25)" result="color1Flood" />
+      <feComposite operator="in" in2="noise1Clipped" in="color1Flood" result="color1" />
+      <feMerge><feMergeNode in="shape" /><feMergeNode in="color1" /></feMerge>
+    </filter>
+    <filter id="filter13_n_1113_3" x="443" y="129" width="142" height="76" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+      <feTurbulence type="fractalNoise" baseFrequency="2 2" stitchTiles="stitch" numOctaves="3" result="noise" seed="4240" />
+      <feColorMatrix in="noise" type="luminanceToAlpha" result="alphaNoise" />
+      <feComponentTransfer in="alphaNoise" result="coloredNoise1"><feFuncA type="discrete" tableValues="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "/></feComponentTransfer>
+      <feComposite operator="in" in2="shape" in="coloredNoise1" result="noise1Clipped" />
+      <feFlood flood-color="rgba(240, 105, 105, 0.25)" result="color1Flood" />
+      <feComposite operator="in" in2="noise1Clipped" in="color1Flood" result="color1" />
+      <feMerge><feMergeNode in="shape" /><feMergeNode in="color1" /></feMerge>
+    </filter>
+
+    <linearGradient id="paint0_linear_1113_3" x1="554.5" y1="275" x2="554.5" y2="332" gradientUnits="userSpaceOnUse"><stop stop-color="#E8CBCA"/><stop offset="1" stop-color="#D8ADAE"/></linearGradient>
+    <linearGradient id="paint1_linear_1113_3" x1="68.5" y1="213" x2="68.5" y2="329" gradientUnits="userSpaceOnUse"><stop stop-color="#BE7D81"/><stop offset="1" stop-color="#D6B3B2"/></linearGradient>
+    <linearGradient id="paint2_linear_1113_3" x1="68.5" y1="213" x2="68.5" y2="329" gradientUnits="userSpaceOnUse"><stop stop-color="#BE7D81"/><stop offset="1" stop-color="#D6B3B2"/></linearGradient>
+    <linearGradient id="paint3_linear_1113_3" x1="68.5" y1="213" x2="68.5" y2="329" gradientUnits="userSpaceOnUse"><stop stop-color="#BE7D81"/><stop offset="1" stop-color="#D6B3B2"/></linearGradient>
+    <linearGradient id="paint4_linear_1113_3" x1="68.5" y1="213" x2="68.5" y2="329" gradientUnits="userSpaceOnUse"><stop stop-color="#BE7D81"/><stop offset="1" stop-color="#D6B3B2"/></linearGradient>
+    <linearGradient id="paint5_linear_1113_3" x1="68.5" y1="213" x2="68.5" y2="329" gradientUnits="userSpaceOnUse"><stop stop-color="#BE7D81"/><stop offset="1" stop-color="#D6B3B2"/></linearGradient>
+    <linearGradient id="paint6_linear_1113_3" x1="68.5" y1="213" x2="68.5" y2="329" gradientUnits="userSpaceOnUse"><stop stop-color="#BE7D81"/><stop offset="1" stop-color="#D6B3B2"/></linearGradient>
+    <linearGradient id="paint7_linear_1113_3" x1="68.5" y1="213" x2="68.5" y2="329" gradientUnits="userSpaceOnUse"><stop stop-color="#BE7D81"/><stop offset="1" stop-color="#D6B3B2"/></linearGradient>
+    <linearGradient id="paint8_linear_1113_3" x1="344.428" y1="270.03" x2="545.817" y2="178.258" gradientUnits="userSpaceOnUse"><stop offset="1" stop-color="#D28383"/></linearGradient>
+    <linearGradient id="paint9_linear_1113_3" x1="188" y1="107" x2="188" y2="257" gradientUnits="userSpaceOnUse"><stop stop-color="#E1CCC9"/><stop offset="1" stop-color="#C18184"/></linearGradient>
+    <linearGradient id="paint10_linear_1113_3" x1="259" y1="76" x2="259" y2="187" gradientUnits="userSpaceOnUse"><stop offset="1" stop-color="#C08081"/></linearGradient>
+    <linearGradient id="paint11_linear_1113_3" x1="268" y1="125" x2="268" y2="231" gradientUnits="userSpaceOnUse"><stop stop-color="#BA6C6E"/><stop offset="1" stop-color="#D19190"/></linearGradient>
+    <linearGradient id="paint12_linear_1113_3" x1="385.491" y1="-28.1753" x2="371.033" y2="201.002" gradientUnits="userSpaceOnUse"><stop offset="1" stop-color="#CA787B"/></linearGradient>
+    <linearGradient id="paint13_linear_1113_3" x1="329.5" y1="285" x2="329.5" y2="193" gradientUnits="userSpaceOnUse"><stop stop-color="#B7898B"/><stop offset="1" stop-color="#BE9192"/></linearGradient>
+    <linearGradient id="paint14_linear_1113_3" x1="260" y1="4" x2="190.952" y2="91.4035" gradientUnits="userSpaceOnUse"><stop stop-color="#E1C2BD"/><stop offset="0.5" stop-color="#DEA2A0"/><stop offset="1" stop-color="#D07F7F"/></linearGradient>
+    <linearGradient id="paint15_linear_1113_3" x1="260" y1="4" x2="190.952" y2="91.4035" gradientUnits="userSpaceOnUse"><stop stop-color="#E1C2BD"/><stop offset="0.5" stop-color="#DEA2A0"/><stop offset="1" stop-color="#D07F7F"/></linearGradient>
+    <linearGradient id="paint16_linear_1113_3" x1="260" y1="4" x2="190.952" y2="91.4035" gradientUnits="userSpaceOnUse"><stop stop-color="#E1C2BD"/><stop offset="0.5" stop-color="#DEA2A0"/><stop offset="1" stop-color="#D07F7F"/></linearGradient>
+    <linearGradient id="paint17_linear_1113_3" x1="260" y1="4" x2="190.952" y2="91.4035" gradientUnits="userSpaceOnUse"><stop stop-color="#E1C2BD"/><stop offset="0.5" stop-color="#DEA2A0"/><stop offset="1" stop-color="#D07F7F"/></linearGradient>
+    <linearGradient id="paint18_linear_1113_3" x1="260" y1="4" x2="190.952" y2="91.4035" gradientUnits="userSpaceOnUse"><stop stop-color="#E1C2BD"/><stop offset="0.5" stop-color="#DEA2A0"/><stop offset="1" stop-color="#D07F7F"/></linearGradient>
+    <linearGradient id="paint19_linear_1113_3" x1="497.467" y1="0.335077" x2="596.033" y2="300.665" gradientUnits="userSpaceOnUse"><stop stop-color="#E1C2BD"/><stop offset="0.5" stop-color="#DFB1AE"/><stop offset="1" stop-color="#D07F7F"/></linearGradient>
+    <linearGradient id="paint20_linear_1113_3" x1="497.467" y1="0.335077" x2="596.033" y2="300.665" gradientUnits="userSpaceOnUse"><stop stop-color="#E1C2BD"/><stop offset="0.5" stop-color="#DFB1AE"/><stop offset="1" stop-color="#D07F7F"/></linearGradient>
+    <linearGradient id="paint21_linear_1113_3" x1="497.467" y1="0.335077" x2="596.033" y2="300.665" gradientUnits="userSpaceOnUse"><stop stop-color="#E1C2BD"/><stop offset="0.5" stop-color="#DFB1AE"/><stop offset="1" stop-color="#D07F7F"/></linearGradient>
+    <linearGradient id="paint22_linear_1113_3" x1="497.467" y1="0.335077" x2="596.033" y2="300.665" gradientUnits="userSpaceOnUse"><stop stop-color="#E1C2BD"/><stop offset="0.5" stop-color="#DFB1AE"/><stop offset="1" stop-color="#D07F7F"/></linearGradient>
+    <linearGradient id="paint23_linear_1113_3" x1="497.467" y1="0.335077" x2="596.033" y2="300.665" gradientUnits="userSpaceOnUse"><stop stop-color="#E1C2BD"/><stop offset="0.5" stop-color="#DFB1AE"/><stop offset="1" stop-color="#D07F7F"/></linearGradient>
+    <linearGradient id="paint24_linear_1113_3" x1="196" y1="176" x2="325.79" y2="401.448" gradientUnits="userSpaceOnUse"><stop stop-color="#85494A"/><stop offset="0.5" stop-color="#8C726D"/><stop offset="1" stop-color="#42312E"/></linearGradient>
+    <linearGradient id="paint25_linear_1113_3" x1="410.997" y1="85.5304" x2="338.131" y2="524.43" gradientUnits="userSpaceOnUse"><stop stop-color="#8B4743"/><stop offset="0.505658" stop-color="#684D45"/><stop offset="0.865385" stop-color="#927269"/><stop offset="0.9999" stop-color="#6E4F4A"/></linearGradient>
+    <linearGradient id="paint26_linear_1113_3" x1="568.667" y1="227.814" x2="408.392" y2="400.569" gradientUnits="userSpaceOnUse"><stop stop-color="#744644"/><stop offset="1" stop-color="#81635B"/></linearGradient>
+    <linearGradient id="paint27_linear_1113_3" x1="308" y1="129" x2="308" y2="240" gradientUnits="userSpaceOnUse"><stop stop-color="#E8CBCA"/><stop offset="1" stop-color="#D8ADAE"/></linearGradient>
+    <linearGradient id="paint28_linear_1113_3" x1="514" y1="129" x2="514" y2="205" gradientUnits="userSpaceOnUse"><stop stop-color="#E8CBCA"/><stop offset="1" stop-color="#D8ADAE"/></linearGradient>
+  </defs>
+
+  <!-- ========= 骨骼层级 =========
+    root (整树根骨) ──► trunk
+                   ├─► leftBranch ──► crown-2, crown-4
+                   ├─► rightBranch ─► crown-1, crown-3, crown-7, crown-10, crown-12
+                   └─► canopy ─► crown-5, crown-6, crown-8, crown-9, crown-11
+    每片 crown 还裹一层自己的 <g> 做小幅独立摇摆
+  -->
+  <g id="bone-root">
+
+    <!-- 树干 trunk -->
+    <g id="bone-trunk">
+      <g filter="url(#filter10_n_1113_3)">
+        <path d="M345.788 391.924C341.319 382.962 325.227 337.234 320.758 315.49L326.795 400.489C303.555 455.311 292.826 508.55 331.822 527H355.843L353.05 525.682C324.001 513.031 328.284 481.755 334.057 467.698C352.38 432.908 349.512 402.686 345.788 391.924Z" fill="#B3948D"/>
+        <path d="M434.01 126.314C447.147 116.329 457 93.6895 460.284 83.6177H461.598C462.124 85.1941 457 100.039 454.373 107.265C458.577 106.668 467.948 97.3822 472.108 92.8137L474.079 94.1275C473.553 96.7549 455.905 110.549 447.147 117.118C457.146 118.169 468.83 112.739 473.422 109.892L474.735 111.206C474.21 114.359 457 118.65 448.461 120.402C443.206 121.453 432.696 131.35 428.098 136.167C416.012 146.151 401.605 170.105 395.912 180.833C401.167 177.68 423.5 177.33 434.01 177.549C448.198 179.126 459.19 170.324 462.912 165.726L464.883 167.039C461.598 169.921 454.898 175.664 454.373 175.578C466.459 177.68 477.801 172.513 481.961 169.667V171.637C478.283 178.469 438.827 183.242 419.559 184.775C380.147 191.08 353.216 228.565 344.677 246.52C320.504 283.829 322.781 321.183 326.941 335.196C343.232 385.643 330.664 429.346 322.343 444.892C294.098 493.5 329.35 518.023 338.765 526.343H226.441C227.492 522.665 243.082 516.052 250.745 513.206C265.459 512.155 270.013 499.193 270.451 492.843C277.808 466.569 286.654 454.745 290.157 452.118C305.922 440.557 310.739 413.144 311.177 400.882C313.279 390.373 306.36 351.837 302.637 333.882C298.959 324.949 300.667 302.572 301.981 292.5C313.016 270.429 277.677 208.859 258.628 180.833C253.898 179.257 233.01 164.85 223.157 157.843V155.216C226.31 160.471 245.928 170.105 255.343 174.265C252.716 171.112 239.798 140.108 233.667 125C241.549 142.867 275.049 197.255 290.814 222.216C292.39 210.129 286.216 176.892 282.932 161.784C280.83 151.275 272.86 132.882 269.137 125C263.882 117.118 238.922 106.827 227.098 102.667V100.039C228.149 101.616 244.177 107.265 252.059 109.892C243.651 103.586 236.294 72.6699 233.667 58L235.637 58.6569C242.469 91.7628 251.621 107.046 255.343 110.549C259.547 116.329 266.291 117.775 269.137 117.775C269.137 115.147 258.628 94.3464 253.373 84.2745C262.306 93.7333 278.99 132.444 286.216 150.618C285.69 138.006 291.69 121.716 294.755 115.147C300.01 107.79 302.199 88.8726 302.637 80.3333C303.688 85.0627 302.199 102.448 301.324 110.549C306.579 99.5137 316.213 91.0621 320.373 88.2157V90.1863C307.761 97.0177 298.039 121.935 294.755 133.539C292.653 177.68 298.696 213.676 301.981 226.157C303.032 235.09 312.49 260.533 317.088 272.137C343.888 240.608 345.333 188.935 342.706 167.039C345.859 190.161 345.333 216.085 344.677 226.157C365.171 217.224 394.379 171.637 406.422 149.961C411.151 146.808 412.771 128.065 412.99 119.088C410.888 103.324 413.866 97.6307 415.618 96.7549C412.99 100.039 414.961 112.52 414.961 113.833C417.063 122.767 414.961 137.699 413.647 144.049L415.618 142.078C433.484 128.941 440.141 102.01 441.235 90.1863L441.892 90.8431C442.943 94.5216 437.075 116.023 434.01 126.314Z" fill="url(#paint25_linear_1113_3)"/>
+      </g>
+    </g>
+
+    <!-- 左枝 leftBranch -->
+    <g id="bone-leftBranch">
+      <g filter="url(#filter9_n_1113_3)">
+        <path d="M262.063 289.042C305.185 321.641 322.977 347.754 326.483 356.737L337 371.853L318.594 408L313.336 400.113C313.336 343.329 272.142 311.169 251.545 302.187C243.131 300.084 211.228 292.986 196.329 289.7C189.492 286.019 176.828 286.414 171.35 287.071C167.669 291.277 153.163 294.519 146.371 295.615C144.793 299.821 134.758 305.692 129.937 308.102C127.834 307.576 119.42 309.636 115.476 310.731L114.818 309.416C116.396 307.839 125.117 306.568 129.28 306.13C134.538 304.553 141.112 298.025 143.741 294.958C140.06 293.38 128.622 293.862 123.364 294.3L122.049 292.986C126.256 291.934 140.455 292.11 147.028 292.329C154.916 292.329 163.462 286.633 166.748 283.785C161.49 280.63 133.881 279.841 120.734 279.841C109.165 278.264 99.6993 277.87 96.4126 277.87C71.1706 284.705 58.2867 282.908 55 281.156C70.7762 283.259 86.5524 277.651 92.4685 274.584C69.8559 271.429 62.4499 267.135 61.5734 265.382C82.0825 272.743 110.436 275.898 122.049 276.555C101.54 268.669 94.6597 260.563 93.7832 257.496C101.145 265.908 120.515 273.269 129.28 275.898C145.056 274.846 156.888 275.898 160.832 276.555C168.194 279.71 180.114 280.937 185.154 281.156C182.524 280.104 166.529 269.326 158.86 264.068C143.084 261.439 134.758 255.086 132.566 252.238C138.351 257.496 151.191 260.563 156.888 261.439C150.052 257.759 147.028 251.143 146.371 248.295C153.207 259.336 177.266 273.05 188.441 278.527C199.484 285.888 232.921 289.919 248.259 291.014C235.112 271.56 216.925 254.429 209.476 248.295C197.111 244.614 173.647 223.977 163.462 214.119C159.347 212.291 138.386 205.695 128.65 202.731C127.063 202.345 125.707 201.974 124.678 201.632C122.276 200.831 124.386 201.433 128.65 202.731C136.804 204.714 151.05 207.104 158.203 208.204L138.483 190.459L161.49 208.204C159.386 206.101 152.287 189.802 149 181.915C167.931 220.297 195.014 236.026 206.189 239.093C186.206 213.856 182.963 187.392 183.839 177.314C183.839 199.397 205.751 233.398 216.706 247.637C208.818 217.142 209.914 187.173 211.448 176C210.396 188.093 214.515 216.529 216.706 229.235C220.387 259.205 248.478 281.594 262.063 289.042Z" fill="url(#paint24_linear_1113_3)"/>
+      </g>
+
+      <!-- crown-2：附着在左枝中后段 -->
+      <g id="bone-c2">
+        <g filter="url(#filter1_n_1113_3)">
+          <path d="M125.13 237.683C137.663 236.206 135.451 249.499 136.189 250.976C138.548 259.788 135.206 261.54 133.24 261.315C136.189 274.313 126.113 276.577 120.707 276.085C120.117 289.083 109.648 289.871 104.487 288.64C102.128 297.502 93.1828 297.256 89.0051 296.025C81.9276 311.386 69.3453 303.902 63.9389 298.24C50.3736 318.328 36.1694 306.61 30.7629 298.24C28.4038 304.739 20.933 298.487 17.4925 294.548C-0.791118 295.729 7.90836 286.67 14.5435 281.993C3.3375 261.906 14.2978 258.853 21.1787 259.838C17.0501 254.521 19.4584 251.714 21.1787 250.976C9.38279 232.661 21.1787 229.559 28.5511 230.298C31.5001 219.072 39.1183 225.62 42.5587 230.298C41.9689 224.389 49.1939 225.374 52.8801 226.605C63.4964 204.745 78.4379 214.05 84.5816 221.436C109.353 208.438 114.071 221.928 113.334 230.298C121.001 225.571 124.393 233.252 125.13 237.683Z" fill="url(#paint1_linear_1113_3)"/>
+          <path d="M16.0181 300.456C14.5436 301.194 12.7741 303.115 17.4925 304.887C19.95 303.41 23.0956 300.456 16.0181 300.456Z" fill="url(#paint2_linear_1113_3)"/>
+          <path d="M2.74769 302.671C-2.56046 301.49 1.02746 298.24 3.48494 296.763C4.2222 296.517 5.99161 296.025 7.1712 296.025C8.35079 296.025 8.64569 298.979 8.64569 300.456C8.89142 301.687 8.05584 303.853 2.74769 302.671Z" fill="url(#paint3_linear_1113_3)"/>
+          <path d="M7.90844 281.993C2.60036 284.356 2.25624 278.547 2.74769 275.347C4.95937 273.87 7.90844 275.347 9.38293 277.562C10.5625 279.335 8.89143 281.255 7.90844 281.993Z" fill="url(#paint4_linear_1113_3)"/>
+          <path d="M4.95947 258.361C3.19009 254.816 6.67971 253.438 8.64569 253.191C12.1845 253.191 11.5947 257.13 10.8574 259.099C9.62868 260.33 6.72885 261.906 4.95947 258.361Z" fill="url(#paint5_linear_1113_3)"/>
+          <path d="M120.707 296.763C127.784 293.809 130.537 299.471 131.028 302.671C135.746 310.352 131.52 312.272 128.816 312.272C127.047 325.27 117.758 319.657 113.334 315.226C100.358 312.863 106.453 307.349 111.122 304.887C109.353 296.025 116.775 295.779 120.707 296.763Z" fill="url(#paint6_linear_1113_3)"/>
+          <path d="M111.122 323.35C110.385 326.304 110.09 331.326 114.809 327.781C120.707 323.35 115.546 322.611 111.122 323.35Z" fill="url(#paint7_linear_1113_3)"/>
+        </g>
+      </g>
+
+      <!-- crown-4：附着在左枝前段（上方） -->
+      <g id="bone-c4">
+        <g filter="url(#filter3_n_1113_3)">
+          <path d="M224.545 136.296C246.4 131.133 284.557 130.41 262.342 168.828C266.97 166.504 276.689 166.349 278.54 184.319C283.169 188.192 308.624 200.585 278.54 223.822C276.485 225.409 274.697 226.775 273.15 227.939C268.14 235.635 259.239 243.67 248.457 237.764C248.457 241.637 242.286 251.706 224.545 250.157C217.088 255.321 198.473 262.55 183.662 250.157C180.834 254.03 171.629 258.368 157.436 244.735C150.494 249.124 134.912 254.495 128.124 240.862C114.754 238.797 90.4813 227.54 100.355 199.036C91.8697 196.454 78.6022 187.418 93.4125 171.926C90.0699 173.217 83.8475 173.475 85.6988 164.181C82.8704 158.242 79.8364 147.605 90.3269 152.562C91.6126 146.882 95.4182 137.226 100.355 144.042C103.44 140.169 80.2991 113.834 124.267 120.805C124.781 115.641 128.278 107.328 138.152 115.383C143.808 113.06 156.51 111.975 162.064 126.227C178.006 109.703 212.82 88.5832 224.545 136.296Z" fill="url(#paint9_linear_1113_3)"/>
+        </g>
+      </g>
+    </g>
+
+    <!-- 右枝 rightBranch -->
+    <g id="bone-rightBranch">
+      <g filter="url(#filter11_n_1113_3)">
+        <path d="M341.392 410.078C336.137 386.957 367.667 352.274 384.088 337.823C357.814 341.502 339.422 380.957 333.51 400.225L341.392 410.078Z" fill="#B4958E"/>
+        <path d="M321.686 394C326.941 383.928 340.867 361.288 354.529 351.304C366.353 341.232 386.453 312.812 372.265 279.706L368.324 268.539L354.529 255.402L355.843 254.088L367.667 264.598L366.353 250.804L371.608 267.225L382.118 289.559C387.154 276.203 398.671 246.6 404.451 235.039L406.422 237.01C400.729 249.052 389.606 274.32 390.657 279.049C398.32 274.889 414.304 264.992 416.931 258.686C417.588 261.752 413.647 270.641 392.627 281.676C389.124 286.056 382.775 297.31 385.402 307.294C384.745 313.206 382.512 326.08 378.833 330.284C394.817 324.373 434.01 300.857 462.912 254.088L463.569 254.745C456.124 267.444 439.527 294.157 432.696 299.412C441.892 296.127 461.335 288.376 465.539 283.647C472.546 274.67 487.347 255.008 490.5 248.176L492.471 248.833C485.902 259.124 472.633 280.231 472.108 282.333L497.726 271.824C503.637 264.817 516.118 250.41 518.745 248.833L520.716 249.49C514.804 255.621 502.98 268.276 502.98 269.853C515.023 268.101 540.027 263.678 543.706 260C548.304 254.745 558.551 241.871 562.755 232.412H564.069C561.764 237.648 556.775 248.256 554.507 250.545L571.951 235.039L573.265 237.01C565.382 243.578 549.486 257.11 548.961 258.686C557.719 258.029 576.943 255.008 583.775 248.176L585.088 248.833C582.461 251.68 571.557 258.424 548.961 262.627C520.497 270.948 463.437 288.771 462.912 293.5L460.941 295.471C468.824 295.908 485.114 297.31 487.216 299.412C495.974 296.346 514.016 290.478 516.118 291.529C508.892 293.719 494.441 298.492 494.441 300.069L524 299.412V300.725L512.833 301.382L520.716 309.922L510.206 302.696H485.245C471.232 300.725 441.498 298.624 434.667 305.98C411.458 320.65 378.833 342.952 363.725 355.902C352.997 365.098 346.48 375.725 334 402C333.343 406.16 331.539 414.626 331.539 413.049C331.539 411.473 324.971 399.693 321.686 394Z" fill="url(#paint26_linear_1113_3)"/>
+      </g>
+
+      <!-- crown-1：右枝末端小簇 -->
+      <g id="bone-c1">
+        <g filter="url(#filter0_n_1113_3)">
+          <path d="M543.635 279.048C538.426 276.931 539.439 281.107 540.597 283.459C538.166 282.754 539.294 284.93 540.162 286.106C538.773 284.342 536.69 285.665 535.822 286.547C537.558 283.371 533.362 283.165 531.047 283.459C526.879 285.224 528.442 288.606 529.744 290.076C527.313 288.664 526.416 290.664 526.272 291.84C525.577 289.017 522.509 289.194 521.062 289.635C516.201 286.106 513.538 291.105 512.815 294.046C506.564 292.282 506.738 295.957 507.606 298.016C496.84 301.192 502.541 306.691 506.738 309.044C498.403 310.455 500.95 315.513 503.265 317.866C497.361 326.688 504.567 326.541 508.908 325.365C513.075 334.892 515.275 329.923 515.854 326.247C519.326 329.776 522.799 327.717 524.101 326.247C529.658 329.776 532.204 325.365 532.783 322.718C539.034 325.188 540.018 321.689 539.728 319.63C543.548 319.983 543.925 317.131 543.635 315.66C545.372 319.189 548.41 317.719 549.712 316.542C549.712 320.424 553.185 320.512 554.921 320.071C553.532 322.541 554.343 323.747 554.921 324.041C556.311 326.864 559.841 326.1 561.433 325.365C561.086 327.482 563.024 328.305 564.037 328.452C568.552 330.922 569.97 327.423 570.115 325.365C571.504 326.423 572.43 325.806 572.719 325.365C575.15 329.952 579.52 328.452 581.401 327.129C581.054 330.658 583.282 330.364 584.44 329.776C588.259 334.363 591.819 330.805 593.121 328.452C599.719 330.217 595.871 326.247 593.121 324.041C594.51 325.1 595.436 323.012 595.726 321.836C598.157 327.482 601.658 324.776 603.105 322.718C609.356 320.248 608.314 314.925 607.012 312.572C609.096 304.456 602.092 303.897 598.33 304.633C602.498 298.633 597.462 297.722 594.424 298.016C594.424 290.958 589.504 290.958 587.044 291.84C584.005 289.635 579.23 294.928 578.796 294.046C578.449 293.34 576.915 293.752 576.192 294.046C577.581 291.223 575.613 289.929 574.455 289.635C574.803 280.46 566.787 280.813 562.735 282.136C560.304 272.608 553.04 274.637 549.712 276.843C545.545 273.314 543.925 276.843 543.635 279.048Z" fill="url(#paint0_linear_1113_3)"/>
+        </g>
+      </g>
+
+      <!-- crown-3：右枝中部大簇 -->
+      <g id="bone-c3">
+        <g filter="url(#filter2_n_1113_3)">
+          <path d="M429.353 264.223C431.263 283.024 443.45 311.815 476.924 276.565C476.015 281.145 479.151 288.464 498.966 281.101C504.673 282.666 526.55 295.608 541.143 261.881C542.14 259.577 542.99 257.58 543.708 255.861C550.224 248.382 555.779 237.839 545.812 232.676C549.947 230.792 558.602 221.293 550.922 208.824C553.903 200.754 555.299 183.363 537.037 178.354C540.212 174.362 541.717 165.391 522.341 161.445C524.669 154.136 525.111 139.91 508.251 141.483C501.504 132.523 481.241 119.91 454.161 141.137C448.523 136.069 434.368 130.577 422.858 149.153C423.101 146.033 421.264 141.27 411.968 147.172C404.667 147.954 392.28 150.868 401.135 156.275C395.507 159.997 386.49 167.531 395.444 167.894C392.357 172.078 356.379 167.644 378.755 197.022C373.417 199.917 365.728 206.569 377.682 210.008C377.122 215.355 380.279 225.349 397.382 222.554C385.153 242.475 374.428 278.699 429.353 264.223Z" fill="url(#paint8_linear_1113_3)"/>
+        </g>
+      </g>
+
+      <!-- crown-7：右枝上部 -->
+      <g id="bone-c7">
+        <g filter="url(#filter6_n_1113_3)">
+          <path d="M415.55 106.851C442.193 102.823 488.708 102.26 461.626 132.226C467.268 130.413 479.116 130.293 481.373 144.309C487.015 147.33 518.046 156.996 481.373 175.121C478.868 176.359 476.688 177.424 474.802 178.332C468.695 184.335 457.844 190.602 444.7 185.996C444.7 189.017 437.178 196.871 415.55 195.663C406.46 199.69 383.767 205.329 365.712 195.663C362.264 198.683 351.043 202.067 333.741 191.433C325.278 194.857 306.283 199.046 298.008 188.413C281.709 186.802 252.12 178.021 264.156 155.788C253.813 153.774 237.639 146.726 255.693 134.643C251.619 135.649 244.033 135.851 246.29 128.601C242.842 123.969 239.143 115.672 251.932 119.539C253.499 115.108 258.138 107.576 264.156 112.893C267.917 109.872 239.707 89.3306 293.306 94.768C293.933 90.7403 298.196 84.2556 310.232 90.5389C317.128 88.7264 332.612 87.8807 339.383 98.9972C358.816 86.1084 401.257 69.6349 415.55 106.851Z" fill="url(#paint12_linear_1113_3)"/>
+        </g>
+      </g>
+
+      <!-- crown-10：树顶右侧大簇 -->
+      <g id="bone-c10">
+        <g filter="url(#filter8_n_1113_3)">
+          <path d="M415.919 11.7623C399.262 0.112403 392.6 23.4123 389.268 23.4123C376.609 16.0895 369.003 26.4634 366.782 32.5658C354.789 28.5715 349.014 37.5586 347.626 42.5514C328.304 29.2372 337.355 50.3181 344.295 62.5227C324.973 80.4969 348.459 103.298 362.617 112.451C368.614 136.417 393.432 139.634 405.092 138.247C404.426 158.219 422.582 155.445 431.743 151.562C441.071 157.553 448.955 151.284 451.731 147.401C457.728 168.038 480.326 168.759 490.875 166.54C513.528 172.531 513.084 159.051 510.03 151.562C520.691 162.213 526.687 147.123 528.353 138.247C545.676 136.25 542.789 124.101 539.18 118.276C556.503 97.639 539.18 89.7059 528.353 88.319C531.684 79.6648 520.302 76.3917 514.195 75.837C536.848 36.56 504.756 30.6241 485.878 32.5658C483.213 23.2458 473.108 25.3539 468.388 27.573C474.385 10.2645 459.782 9.82068 451.731 11.7623C436.407 -9.54039 421.471 2.8862 415.919 11.7623Z" fill="url(#paint19_linear_1113_3)"/>
+          <path d="M507.532 173.197C500.869 167.206 494.762 176.803 492.541 182.351C470.554 175.694 469.499 190.672 471.72 198.993C463.058 196.331 464.78 205.096 466.723 209.811C455.396 229.117 480.326 234.498 494.207 234.775C502.202 244.095 509.753 240.323 512.529 237.272C517.859 245.26 526.965 245.038 530.852 243.929C516.86 249.255 525.022 256.134 530.852 258.907C523.523 271.556 530.019 275.827 534.183 276.382C529.519 291.028 535.016 296.908 538.347 298.018C557.503 306.339 554.171 293.857 556.67 293.857C563.999 300.514 573.604 296.631 577.491 293.857C602.809 308.503 614.136 294.412 616.634 285.536C629.96 293.524 638.843 284.426 641.62 278.879C657.61 274.884 645.506 261.681 637.455 255.579C680.097 231.613 655.223 210.089 637.455 202.322C649.448 177.025 620.799 178.467 604.975 182.351C608.972 170.368 603.309 174.584 599.978 178.19C591.316 165.541 587.485 172.92 586.652 178.19C562.666 145.57 541.679 161.27 534.183 173.197C525.521 163.211 512.807 169.036 507.532 173.197Z" fill="url(#paint20_linear_1113_3)"/>
+          <path d="M616.634 164.876C619.966 159.55 612.47 159.328 608.306 159.883C606.307 162.546 606.363 168.204 606.64 170.701C608.306 174.861 612.47 171.533 616.634 164.876Z" fill="url(#paint21_linear_1113_3)"/>
+          <path d="M574.159 315.493C578.823 313.496 575.548 311.332 573.327 310.5C568.33 305.507 564.165 312.164 564.165 314.661C564.165 317.157 568.33 317.989 574.159 315.493Z" fill="url(#paint22_linear_1113_3)"/>
+          <path d="M594.98 310.5C590.317 307.837 593.037 306.062 594.98 305.507C599.145 303.011 605.807 307.171 604.975 312.996C604.142 318.821 600.81 313.828 594.98 310.5Z" fill="url(#paint23_linear_1113_3)"/>
+        </g>
+      </g>
+
+      <!-- crown-12：右枝顶 -->
+      <g id="bone-c12">
+        <g filter="url(#filter13_n_1113_3)">
+          <path d="M499.581 134.398C492.668 131.575 494.013 137.142 495.549 140.279C492.323 139.338 493.82 142.24 494.973 143.808C493.129 141.456 490.364 143.22 489.212 144.396C491.516 140.162 485.947 139.887 482.875 140.279C477.344 142.632 479.418 147.141 481.147 149.101C477.92 147.219 476.73 149.886 476.538 151.454C475.616 147.69 471.545 147.925 469.625 148.513C463.173 143.808 459.64 150.474 458.679 154.395C450.384 152.042 450.614 156.943 451.767 159.688C437.48 163.923 445.046 171.255 450.614 174.391C439.554 176.274 442.933 183.018 446.006 186.154C438.171 197.917 447.734 197.721 453.495 196.153C459.025 208.857 461.944 202.23 462.712 197.329C467.321 202.034 471.929 199.289 473.658 197.329C481.032 202.034 484.411 196.153 485.179 192.624C493.475 195.917 494.781 191.252 494.397 188.507C499.466 188.977 499.965 185.174 499.581 183.214C501.886 187.919 505.918 185.958 507.646 184.39C507.646 189.566 512.255 189.683 514.559 189.095C512.716 192.389 513.791 193.996 514.559 194.388C516.403 198.152 521.088 197.133 523.201 196.153C522.74 198.976 525.313 200.074 526.657 200.27C532.648 203.563 534.53 198.897 534.722 196.153C536.566 197.564 537.795 196.741 538.179 196.153C541.405 202.269 547.204 200.27 549.7 198.505C549.239 203.21 552.197 202.818 553.733 202.034C558.802 208.151 563.526 203.406 565.254 200.27C574.011 202.622 568.903 197.329 565.254 194.388C567.098 195.8 568.327 193.016 568.711 191.448C571.937 198.976 576.584 195.369 578.504 192.624C586.8 189.33 585.417 182.233 583.689 179.097C586.454 168.275 577.16 167.53 572.167 168.51C577.698 160.511 571.015 159.296 566.983 159.688C566.983 150.278 560.454 150.278 557.189 151.454C553.157 148.513 546.82 155.571 546.244 154.395C545.783 153.454 543.747 154.003 542.787 154.395C544.631 150.631 542.019 148.905 540.483 148.513C540.944 136.28 530.306 136.75 524.929 138.515C521.703 125.811 512.063 128.516 507.646 131.457C502.116 126.752 499.965 131.457 499.581 134.398Z" fill="url(#paint28_linear_1113_3)"/>
+        </g>
+      </g>
+    </g>
+
+    <!-- 顶冠 canopy -->
+    <g id="bone-canopy">
+      <!-- crown-8：树冠底部（靠近主干上沿） -->
+      <g id="bone-c8">
+        <g filter="url(#filter7_n_1113_3)">
+          <path d="M307.466 278.466C296.902 281.883 298.956 275.143 301.303 271.346C296.373 272.485 298.662 268.973 300.423 267.074C297.606 269.922 293.38 267.786 291.619 266.362C295.141 271.489 286.631 271.821 281.935 271.346C273.484 268.498 276.653 263.04 279.294 260.667C274.364 262.945 272.545 259.717 272.252 257.819C270.843 262.375 264.622 262.091 261.688 261.379C251.828 267.074 246.428 259.006 244.961 254.259C232.284 257.107 232.636 251.174 234.397 247.851C212.564 242.725 224.126 233.85 232.636 230.052C215.733 227.774 220.898 219.61 225.593 215.813C213.621 201.574 228.234 201.811 237.038 203.71C245.489 188.332 249.95 196.353 251.124 202.286C258.166 196.59 265.209 199.913 267.85 202.286C279.119 196.59 284.283 203.71 285.457 207.982C298.134 203.995 300.13 209.643 299.543 212.965C307.29 212.396 308.053 217 307.466 219.373C310.987 213.677 317.15 216.051 319.791 217.949C319.791 211.684 326.833 211.541 330.355 212.253C327.538 208.266 329.181 206.32 330.355 205.846C333.172 201.289 340.332 202.523 343.56 203.71C342.856 200.292 346.788 198.963 348.842 198.726C357.998 194.739 360.874 200.387 361.167 203.71C363.984 202.001 365.862 202.998 366.449 203.71C371.379 196.305 380.241 198.726 384.056 200.862C383.352 195.166 387.871 195.641 390.218 196.59C397.966 189.186 405.184 194.929 407.825 198.726C421.207 195.878 413.401 202.286 407.825 205.846C410.643 204.137 412.521 207.507 413.108 209.406C418.037 200.292 425.139 204.659 428.073 207.982C440.75 211.969 438.638 220.56 435.997 224.357C440.222 237.457 426.019 238.359 418.39 237.172C426.841 246.855 416.629 248.326 410.466 247.851C410.466 259.243 400.489 259.243 395.501 257.819C389.338 261.379 379.654 252.835 378.774 254.259C378.07 255.398 374.959 254.734 373.492 254.259C376.309 258.816 372.318 260.904 369.97 261.379C370.675 276.188 354.418 275.618 346.201 273.482C341.271 288.86 326.54 285.585 319.791 282.026C311.339 287.721 308.053 282.026 307.466 278.466Z" fill="url(#paint13_linear_1113_3)"/>
+        </g>
+      </g>
+
+      <!-- crown-6：冠中 -->
+      <g id="bone-c6">
+        <g filter="url(#filter5_n_1113_3)">
+          <path d="M313.594 145.703C340.861 142.054 388.467 141.543 360.75 168.692C366.524 167.05 378.65 166.94 380.96 179.639C386.734 182.376 418.492 191.133 380.96 207.554C378.396 208.676 376.165 209.641 374.235 210.464C367.984 215.902 356.88 221.58 343.428 217.407C343.428 220.143 335.729 227.259 313.594 226.164C304.291 229.813 281.066 234.922 262.588 226.164C259.06 228.901 247.575 231.966 229.868 222.333C221.206 225.435 201.766 229.23 193.298 219.596C176.616 218.136 146.334 210.182 158.652 190.039C148.066 188.214 131.513 181.828 149.991 170.881C145.821 171.794 138.057 171.976 140.367 165.408C136.838 161.211 133.053 153.694 146.141 157.197C147.745 153.183 152.493 146.36 158.652 151.176C162.501 148.44 133.63 129.829 188.485 134.756C189.127 131.107 193.49 125.232 205.808 130.924C212.866 129.282 228.713 128.516 235.642 138.587C255.531 126.91 298.966 111.985 313.594 145.703Z" fill="url(#paint11_linear_1113_3)"/>
+        </g>
+      </g>
+
+      <!-- crown-11：冠中偏左 -->
+      <g id="bone-c11">
+        <g filter="url(#filter12_n_1113_3)">
+          <path d="M286.88 136.884C276.754 132.76 278.723 140.892 280.973 145.474C276.247 144.099 278.441 148.337 280.129 150.628C277.428 147.192 273.378 149.769 271.69 151.487C275.066 145.302 266.909 144.901 262.408 145.474C254.307 148.91 257.345 155.495 259.877 158.359C255.151 155.61 253.407 159.504 253.126 161.795C251.776 156.297 245.813 156.641 243 157.5C233.549 150.628 228.374 160.363 226.967 166.09C214.816 162.654 215.153 169.812 216.841 173.82C195.914 180.005 206.996 190.714 215.153 195.295C198.952 198.044 203.902 207.894 208.403 212.475C196.927 229.655 210.934 229.369 219.373 227.078C227.474 245.633 231.749 235.955 232.874 228.796C239.625 235.668 246.376 231.66 248.907 228.796C259.708 235.668 264.659 227.078 265.784 221.924C277.935 226.735 279.848 219.92 279.285 215.911C286.711 216.599 287.442 211.044 286.88 208.18C290.255 215.052 296.162 212.189 298.693 209.898C298.693 217.458 305.444 217.629 308.819 216.77C306.119 221.581 307.694 223.929 308.819 224.501C311.52 229.999 318.383 228.51 321.477 227.078C320.802 231.201 324.571 232.805 326.54 233.091C335.316 237.902 338.072 231.087 338.354 227.078C341.054 229.14 342.854 227.937 343.417 227.078C348.142 236.012 356.637 233.091 360.293 230.514C359.618 237.386 363.95 236.814 366.2 235.668C373.626 244.602 380.545 237.673 383.077 233.091C395.903 236.527 388.421 228.796 383.077 224.501C385.777 226.563 387.577 222.497 388.14 220.206C392.865 231.201 399.672 225.933 402.485 221.924C414.636 217.114 412.611 206.749 410.08 202.167C414.13 186.362 400.516 185.274 393.203 186.705C401.304 175.023 391.515 173.248 385.608 173.82C385.608 160.077 376.045 160.077 371.263 161.795C365.356 157.5 356.074 167.808 355.23 166.09C354.555 164.715 351.574 165.517 350.167 166.09C352.868 160.592 349.042 158.072 346.792 157.5C347.467 139.632 331.884 140.32 324.008 142.897C319.283 124.342 305.163 128.294 298.693 132.589C290.593 125.717 287.442 132.589 286.88 136.884Z" fill="url(#paint27_linear_1113_3)"/>
+        </g>
+      </g>
+
+      <!-- crown-5：冠中偏左上 -->
+      <g id="bone-c5">
+        <g filter="url(#filter4_n_1113_3)">
+          <path d="M286.148 97.6793C302.383 93.8581 330.728 93.3232 314.225 121.753C317.663 120.033 324.883 119.919 326.259 133.216C329.697 136.082 348.606 145.253 326.259 162.448C324.732 163.623 323.403 164.633 322.254 165.495C318.533 171.19 311.921 177.136 303.911 172.765C303.911 175.631 299.327 183.083 286.148 181.936C280.608 185.757 266.78 191.107 255.778 181.936C253.677 184.802 246.839 188.012 236.295 177.924C231.138 181.172 219.563 185.146 214.521 175.058C204.588 173.53 186.558 165.2 193.892 144.107C187.589 142.196 177.733 135.509 188.735 124.045C186.252 125.001 181.63 125.192 183.005 118.314C180.904 113.919 178.65 106.048 186.443 109.716C187.398 105.513 190.225 98.3672 193.892 103.411C196.184 100.545 178.994 81.0572 211.655 86.2158C212.037 82.3946 214.635 76.2425 221.97 82.2036C226.172 80.4841 235.608 79.6816 239.733 90.2281C251.576 78.0003 277.438 62.3716 286.148 97.6793Z" fill="url(#paint10_linear_1113_3)"/>
+        </g>
+      </g>
+
+      <!-- crown-9：冠顶中（由一组无 filter 的路径块组成） -->
+      <g id="bone-c9">
+        <path d="M202.862 31.4743C191.602 34.0115 191.773 42.2576 193.266 46.0635C180.983 43.5263 178.339 56.424 178.552 63.19C173.434 57.608 163.625 65.5158 159.36 70.1675C133.771 72.7047 139.316 80.528 145.286 84.1224C140.169 84.1224 139.742 91.3113 140.168 94.9058C130.956 108.607 144.007 117.107 151.683 119.644C151.683 133.853 167.463 134.868 175.353 133.599C199.663 132.965 188.148 115.204 188.148 113.301C192.242 118.883 199.663 116.895 202.862 115.204C215.656 116.726 222.267 104.843 223.972 98.7117C224.484 110.383 238.26 107.381 245.083 104.421C248.154 115.077 254.466 112.244 257.238 109.495C268.497 122.689 278.136 114.992 281.548 109.495C290.504 108.226 291.144 101.249 291.144 98.7117C300.356 104.801 307.35 96.1744 309.696 91.0999C317.372 104.294 323.983 101.672 326.329 98.7117C334.517 110.383 340.403 107.381 342.322 104.421C373.54 114.57 381.345 95.1172 381.345 84.1224C388.51 58.7498 370.683 50.2923 360.874 49.2351C367.015 42.1307 361.3 37.8174 357.675 36.5488C357.675 20.3103 346.16 20.9023 340.403 23.2282C338.867 14.6015 331.66 17.5193 328.248 20.0566C319.547 -2.77878 299.887 3.77584 291.144 9.90756C272.72 -5.31601 259.584 12.4448 255.319 23.2282C249.178 19.1686 244.657 23.2282 243.164 25.7654C225.252 10.5419 205.42 31.4743 202.862 31.4743Z" fill="url(#paint14_linear_1113_3)"/>
+        <path d="M161.279 63.19C164.862 60.6528 161.493 56.2125 159.36 54.3096C149.125 51.7723 150.404 63.19 151.683 66.9959C152.963 70.8018 156.801 66.3616 161.279 63.19Z" fill="url(#paint15_linear_1113_3)"/>
+        <path d="M146.566 65.7273C146.054 62.1751 142.088 64.2472 140.168 65.7273C138.889 68.2645 138.889 68.2645 141.448 70.1674L141.448 70.1675C144.007 72.0704 147.205 70.1675 146.566 65.7273Z" fill="url(#paint16_linear_1113_3)"/>
+        <path d="M202.862 25.7654C206.444 24.2431 203.075 20.9023 200.942 19.4223C195.185 15.6163 191.347 24.4968 192.626 26.3997C193.905 28.3027 198.384 27.6684 202.862 25.7654Z" fill="url(#paint17_linear_1113_3)"/>
+        <path d="M211.818 17.5193C209.259 14.982 212.884 13.502 215.016 13.0791C220.774 11.8105 219.494 17.5193 218.215 19.4223C216.936 21.3252 215.016 20.6909 211.818 17.5193Z" fill="url(#paint18_linear_1113_3)"/>
+      </g>
+
+    </g>
+
+  </g>
+
+  <!-- ========= 花瓣层：JS 动态管理，结构在此作占位 ========= -->
+  <g id="petal-layer"></g>
+</svg>
+</div>
+
+<div class="controls">
+  <div class="control-row">
+    <label>Wind</label>
+    <input type="range" id="wind" min="0" max="200" value="100">
+    <span class="value" id="windVal">100%</span>
+  </div>
+  <div class="control-row">
+    <label>Speed</label>
+    <input type="range" id="speed" min="30" max="200" value="100">
+    <span class="value" id="speedVal">1.0×</span>
+  </div>
+  <div class="control-row">
+    <label>花瓣密度</label>
+    <input type="range" id="density" min="0" max="50" value="14">
+    <span class="value" id="densityVal">14/s</span>
+  </div>
+  <div class="btn-row">
+    <button id="swayBtn" class="active">Sway: ON</button>
+    <button id="resetBtn">Reset 花瓣</button>
+  </div>
+</div>
+
+<script>
+// =============================================================
+// 参数与工具
+// =============================================================
+const DEFAULTS = {
+  wind: 1.0,
+  speed: 1.0,
+  spawnRate: 14,   // 花瓣/秒
+  maxPetals: 60,
+  swayOn: true
+};
+
+let WIND = DEFAULTS.wind;
+let SPEED = DEFAULTS.speed;
+let SPAWN_RATE = DEFAULTS.spawnRate;
+let SWAY_ON = DEFAULTS.swayOn;
+
+// 播种随机：保证每次打开页面参数一致
+function mulberry32(seed) {
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const rng = mulberry32(20260424);
+const rand = (lo, hi) => lo + (hi - lo) * rng();
+const pick = arr => arr[Math.floor(rng() * arr.length)];
+const now = () => performance.now();
+
+// =============================================================
+// 骨骼定义：父 → 子的嵌套关系 + 每根骨自己的摇摆参数
+//
+// rotAmp°, freq(Hz), phase(rad), pivot in viewBox coords
+// 每片 crown 在其所属父骨基础上叠加自己的 rotation，
+// 由于 <g> 嵌套，浏览器自动级联
+// =============================================================
+const BONES = {
+  // 根骨：全树整体缓摆（幅度小）
+  root:         { el: null, rotAmp: 0.45, freq: 0.18, phase: 0.0,  pivotX: 350, pivotY: 520 },
+  // 主干：几乎不转，微微颤抖
+  trunk:        { el: null, rotAmp: 0.20, freq: 0.21, phase: 0.15, pivotX: 340, pivotY: 500 },
+  // 左枝：中幅
+  leftBranch:   { el: null, rotAmp: 0.90, freq: 0.26, phase: 0.35, pivotX: 320, pivotY: 310 },
+  // 右枝：中幅
+  rightBranch:  { el: null, rotAmp: 0.90, freq: 0.27, phase: 0.55, pivotX: 345, pivotY: 340 },
+  // 顶冠：摇得最明显
+  canopy:       { el: null, rotAmp: 1.10, freq: 0.31, phase: 0.80, pivotX: 340, pivotY: 210 },
+
+  // 12 片花冠各自的小骨（pivot 取各自 bbox 底部中心，模拟"从枝挂下来")
+  // freq/phase/amp 用种子随机微扰，保证 12 片形似而不同
+  c1:  { el: null, pivotX: 554, pivotY: 332 },   // 右枝末端 填充
+  c2:  { el: null, pivotX: 68,  pivotY: 329 },   // 左枝末端
+  c3:  { el: null, pivotX: 460, pivotY: 293 },   // 右枝中
+  c4:  { el: null, pivotX: 195, pivotY: 253 },   // 左枝上
+  c5:  { el: null, pivotX: 260, pivotY: 184 },   // 冠中左
+  c6:  { el: null, pivotX: 270, pivotY: 231 },   // 冠中
+  c7:  { el: null, pivotX: 380, pivotY: 200 },   // 右上
+  c8:  { el: null, pivotX: 330, pivotY: 285 },   // 冠底中
+  c9:  { el: null, pivotX: 260, pivotY: 135 },   // 冠顶
+  c10: { el: null, pivotX: 500, pivotY: 315 },   // 冠顶右（大簇）
+  c11: { el: null, pivotX: 308, pivotY: 240 },   // 冠中
+  c12: { el: null, pivotX: 514, pivotY: 205 }    // 右冠上
+};
+
+// 给 12 片 crown 注入独立的 rotAmp / freq / phase（种子随机）
+const crownIds = ['c1','c2','c3','c4','c5','c6','c7','c8','c9','c10','c11','c12'];
+for (const id of crownIds) {
+  BONES[id].rotAmp = rand(0.55, 1.35);          // °
+  BONES[id].freq   = rand(0.26, 0.38);          // Hz
+  BONES[id].phase  = rand(0, Math.PI * 2);
+}
+
+// DOM 绑定
+BONES.root.el        = document.getElementById('bone-root');
+BONES.trunk.el       = document.getElementById('bone-trunk');
+BONES.leftBranch.el  = document.getElementById('bone-leftBranch');
+BONES.rightBranch.el = document.getElementById('bone-rightBranch');
+BONES.canopy.el      = document.getElementById('bone-canopy');
+for (const id of crownIds) {
+  BONES[id].el = document.getElementById('bone-' + id);
+}
+
+// 计算一根骨的瞬时旋转角（度）
+function boneRot(b, tSec) {
+  const ω = 2 * Math.PI * b.freq * SPEED;
+  const base    = Math.sin(ω * tSec + b.phase);
+  const flutter = 0.3 * Math.sin(ω * 2.3 * tSec + b.phase * 1.7);
+  return b.rotAmp * (base + flutter) * WIND;
+}
+
+function applyBone(b, tSec) {
+  if (!b.el) return;
+  const rot = SWAY_ON ? boneRot(b, tSec) : 0;
+  b.el.setAttribute('transform', `rotate(${rot.toFixed(3)} ${b.pivotX} ${b.pivotY})`);
+}
+
+function applyAllBones(tSec) {
+  applyBone(BONES.root, tSec);
+  applyBone(BONES.trunk, tSec);
+  applyBone(BONES.leftBranch, tSec);
+  applyBone(BONES.rightBranch, tSec);
+  applyBone(BONES.canopy, tSec);
+  for (const id of crownIds) applyBone(BONES[id], tSec);
+}
+
+// =============================================================
+// 花瓣粒子系统：对象池（直接用 <path>，绕过 <use>/<symbol> 尺寸坑）
+// =============================================================
+const petalLayer = document.getElementById('petal-layer');
+const SVGNS = 'http://www.w3.org/2000/svg';
+
+// 花瓣原始 d（来自 飘.svg / 飘2.svg，原 viewBox 10×14 / 11×16）
+const PETAL_A_D = "M10 4.27707C10 -0.585797 5.49102 -0.327917 3.23653 0.40888C-2.62514 2.17716 0.794169 9.61886 3.23653 13.1187C8.64731 16.6553 10 8.69787 10 4.27707Z";
+const PETAL_B_D = "M9.22566 0.288806C-2.63738 -1.755 -0.79764 7.49108 2.3878 14.0918C2.98665 15.3327 4.65132 15.4704 5.48642 14.3744C12.1307 5.65496 10.8494 1.37637 9.22566 0.288806Z";
+// 花瓣中心（viewBox 中心）用于"围绕自身旋转"
+const PETAL_A_CX = 5,   PETAL_A_CY = 7;
+const PETAL_B_CX = 5.5, PETAL_B_CY = 8;
+
+const petals = [];       // 所有粒子（活 + 空闲）
+const freePool = [];     // 空闲可复用
+
+function createPetalNode() {
+  const g = document.createElementNS(SVGNS, 'g');
+  const path = document.createElementNS(SVGNS, 'path');
+  g.appendChild(path);
+  g.setAttribute('transform', 'translate(-1000 -1000)');
+  g.style.opacity = '0';
+  petalLayer.appendChild(g);
+  return { g, path, active: false };
+}
+
+function resetPetal(p) {
+  // 空间：从冠顶区 spawn，更贴近"从花上飘下来"的感觉
+  p.x = rand(30, 615);
+  p.y = rand(-10, 190);
+  // 0.8~1.6 对应约 8~22px 的花瓣尺寸（匹配 Figma 参考里树:花瓣 ≈ 40:1 的比例）
+  p.scale = rand(0.8, 1.6);
+  p.rot = rand(0, 360);
+  p.spinSpeed = rand(25, 90) * (rng() < 0.5 ? -1 : 1);    // °/s（不要太快，否则像风扇）
+  p.fallSpeed = rand(28, 65);                              // px/s
+  // 85% 向右漂、15% 向左漂
+  p.driftBase = rng() < 0.85 ? rand(6, 42) : rand(-30, -6);
+  p.swayFreq  = rand(0.4, 1.1);                            // Hz
+  p.swayAmp   = rand(15, 35);                              // px
+  p.swayPhase = rand(0, Math.PI * 2);
+  p.age = 0;
+  p.fadeIn = rand(0.5, 1.2);          // 秒
+  // 选模板
+  if (rng() < 0.5) {
+    p.path.setAttribute('d', PETAL_A_D);
+    p.path.setAttribute('fill', 'url(#pGradA)');
+    p.cx = PETAL_A_CX; p.cy = PETAL_A_CY;
+  } else {
+    p.path.setAttribute('d', PETAL_B_D);
+    p.path.setAttribute('fill', 'url(#pGradB)');
+    p.cx = PETAL_B_CX; p.cy = PETAL_B_CY;
+  }
+  // 初次颜色轻微变化：通过 opacity 乘以一个随机饱和值可以加微变
+  p.baseOpacity = rand(0.75, 1.0);
+  p.active = true;
+}
+
+function spawnPetal() {
+  let p = freePool.pop();
+  if (!p) {
+    if (petals.length >= DEFAULTS.maxPetals) return; // 硬上限
+    p = createPetalNode();
+    petals.push(p);
+  }
+  resetPetal(p);
+}
+
+function recyclePetal(p) {
+  p.active = false;
+  p.g.setAttribute('transform', 'translate(-1000 -1000)');  // 挪到画外
+  p.g.style.opacity = '0';
+  freePool.push(p);
+}
+
+function updatePetals(dt, tSec) {
+  for (const p of petals) {
+    if (!p.active) continue;
+    p.age += dt;
+
+    const sway = Math.sin(tSec * 2 * Math.PI * p.swayFreq + p.swayPhase) * p.swayAmp;
+    // 水平：底 drift + sway 微扰，再乘 WIND
+    const vx = (p.driftBase + sway * 0.6) * WIND;
+    const vy = p.fallSpeed * (0.7 + 0.5 * WIND);   // WIND 影响下落速度但不归零
+
+    p.x += vx * dt * SPEED;
+    p.y += vy * dt * SPEED;
+    p.rot += p.spinSpeed * dt * SPEED;
+
+    // 透明度：0~fadeIn 秒淡入、到下半段淡出
+    let op = p.baseOpacity;
+    if (p.age < p.fadeIn) op *= (p.age / p.fadeIn);
+    if (p.y > 470) op *= Math.max(0, 1 - (p.y - 470) / 60);
+    p.g.style.opacity = op.toFixed(3);
+
+    // transform 顺序：先把花瓣挪到目标位置，再绕其自身中心旋转+缩放
+    // （rotate(a cx cy) 与 scale 共用 cx,cy 锚点，避免绕路径 0,0 做圆周运动）
+    p.g.setAttribute('transform',
+      `translate(${p.x.toFixed(2)} ${p.y.toFixed(2)}) ` +
+      `rotate(${p.rot.toFixed(1)} ${p.cx} ${p.cy}) ` +
+      `translate(${p.cx} ${p.cy}) scale(${p.scale.toFixed(3)}) translate(${-p.cx} ${-p.cy})`);
+
+    // 离开画面 → 回收
+    if (p.y > 540 || p.x < -40 || p.x > 700) {
+      recyclePetal(p);
+    }
+  }
+}
+
+let spawnDebt = 0;
+function tickSpawn(dt) {
+  spawnDebt += dt * SPAWN_RATE;
+  while (spawnDebt >= 1) {
+    spawnPetal();
+    spawnDebt -= 1;
+  }
+}
+
+// =============================================================
+// 主循环
+// =============================================================
+let last = now();
+function tick() {
+  const t = now();
+  const dt = Math.min(0.05, (t - last) / 1000);  // 夹到 50ms 避免长卡顿失真
+  last = t;
+  const tSec = t / 1000;
+
+  applyAllBones(tSec);
+  tickSpawn(dt);
+  updatePetals(dt, tSec);
+
+  requestAnimationFrame(tick);
+}
+
+// =============================================================
+// 控制面板
+// =============================================================
+const windSlider    = document.getElementById('wind');
+const windVal       = document.getElementById('windVal');
+const speedSlider   = document.getElementById('speed');
+const speedVal      = document.getElementById('speedVal');
+const densitySlider = document.getElementById('density');
+const densityVal    = document.getElementById('densityVal');
+const swayBtn       = document.getElementById('swayBtn');
+const resetBtn      = document.getElementById('resetBtn');
+
+windSlider.addEventListener('input', () => {
+  WIND = windSlider.value / 100;
+  windVal.textContent = windSlider.value + '%';
+});
+speedSlider.addEventListener('input', () => {
+  SPEED = speedSlider.value / 100;
+  speedVal.textContent = SPEED.toFixed(1) + '×';
+});
+densitySlider.addEventListener('input', () => {
+  SPAWN_RATE = +densitySlider.value;
+  densityVal.textContent = SPAWN_RATE + '/s';
+});
+swayBtn.addEventListener('click', () => {
+  SWAY_ON = !SWAY_ON;
+  swayBtn.textContent = 'Sway: ' + (SWAY_ON ? 'ON' : 'OFF');
+  swayBtn.classList.toggle('active', SWAY_ON);
+});
+resetBtn.addEventListener('click', () => {
+  for (const p of petals) if (p.active) recyclePetal(p);
+  spawnDebt = 0;
+});
+
+// 启动
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>
