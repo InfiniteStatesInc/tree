@@ -357,28 +357,41 @@ TREES.forEach(t => {
 });
 
 // ============================================================
-// Build sway hierarchy per tree:
-//   sway-group  (static, only CSS levitate)
-//     ├ <island elements>     (don't move horizontally)
-//     └ tree-sway              (rotates by base sway amount)
-//          ├ <trunk elements>
-//          └ canopy-sway       (rotates by extra canopy amount, trees 4+)
-//                └ <canopy elements>
+// Build sway hierarchy per tree.
 //
-// Heuristic for splitting:
-//   * island vs tree:   bbox center y >= 60% of viewBox → island (stays put)
-//   * canopy vs trunk:  bbox center y < 55% of viewBox → canopy (extra sway)
+// Two modes:
+//   * NATURAL_SWAY trees (currently only tree 12 — testing): build a bone
+//     hierarchy with multiple cluster bones, each with its own amp/freq/phase
+//     so motion looks asynchronous and organic.
+//   * Simple sway trees (1-11): existing 2-level (tree-sway / canopy-sway)
+//     behavior, kept while we evaluate the natural-sway approach on tree 12.
+//
+// The static, non-moving parts (island/dirt mound) stay as direct children of
+// `sway-group` in BOTH modes, so the floating island never translates.
 // ============================================================
 const SVG_NS_LOC = 'http://www.w3.org/2000/svg';
+const NATURAL_SWAY_TREES = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+// Reference height — tree 12 is the largest = baseline (sizeRatio 1.0)
+const REF_TREE_HEIGHT = 972;
+// Per-tree bone registry — populated by setupNaturalSway, consumed by applySway
+const TREE_BONES = {};
 
 function setupSwayGroups(treeN) {
+  if (NATURAL_SWAY_TREES.has(treeN)) {
+    setupNaturalSway(treeN);
+  } else {
+    setupSimpleSway(treeN);
+  }
+}
+
+// ----------- existing simple sway (trees 1–11 for now) -----------
+function setupSimpleSway(treeN) {
   const sway = swayGroups[treeN];
   const svg = sway.closest('svg');
   const vb = svg.viewBox.baseVal;
-  const islandSplitY = vb.y + vb.height * 0.60; // bottom 40% is island
-  const canopySplitY = vb.y + vb.height * 0.55; // top 55% is canopy
+  const islandSplitY = vb.y + vb.height * 0.60;
+  const canopySplitY = vb.y + vb.height * 0.55;
 
-  // Step 1: Move all non-island elements into tree-sway group
   const treeSway = document.createElementNS(SVG_NS_LOC, 'g');
   treeSway.classList.add('tree-sway');
   treeSway.setAttribute('data-tree', treeN);
@@ -389,16 +402,10 @@ function setupSwayGroups(treeN) {
     let bb;
     try { bb = el.getBBox(); } catch (e) { continue; }
     const cy = bb.y + bb.height / 2;
-    if (cy < islandSplitY) {
-      // Tree element (trunk/canopy/sprout) → moves into tree-sway
-      treeSway.appendChild(el);
-    }
-    // else: island element, stays as direct child of sway-group → static
+    if (cy < islandSplitY) treeSway.appendChild(el);
   }
-  // Append tree-sway last so it draws on top of the island
   sway.appendChild(treeSway);
 
-  // Step 2: For larger trees (4+), additionally split a canopy-sway sub-group
   if (treeN <= 3) return;
 
   const canopyGroup = document.createElementNS(SVG_NS_LOC, 'g');
@@ -426,6 +433,342 @@ function setupSwayGroups(treeN) {
     SWAY_PARAMS[treeN].canopyPivotX = (canopyMinX + canopyMaxX) / 2;
     SWAY_PARAMS[treeN].canopyPivotY = canopyMaxY;
   }
+}
+
+// ----------- TRUE skeletal animation (z-order preserved) ----------------
+// Each tree gets a 4-level bone hierarchy:
+//   root → trunkBase → trunkUpper → {leftBranch, rightBranch, topCanopy}
+//                                          ↳ each has 2 leaf clusters
+//
+// DOM stays flat: each path is wrapped in its own <g> in place. Per frame,
+// we set transform="rotate(rootRot rootP) rotate(trunkBaseRot tbP) ... rotate(leafRot lfP)"
+// which is mathematically identical to nesting that path in the chain of <g>s
+// (SVG processes the transform list right-to-left, so leaf rotation happens
+// first in the path's frame, then is rotated by ancestors in turn).
+//
+// Result:
+//   • a leaf cluster on the left branch INHERITS leftBranch's rotation +
+//     adds its own → leaves swing WITH the branch they hang from
+//   • trunkBase + trunkUpper compose → the trunk visibly BENDS (not rigidly tilts)
+//   • root pivot at the trunk-island junction → base point pinned absolutely
+//   • DOM order untouched → z-order preserved
+function buildSkeleton(vb, trand, rng, mults, junctionY) {
+  const W = vb.width, H = vb.height;
+  const cx = vb.x + W / 2;
+  // junctionY = the actual top of the dirt mound for this tree (measured from SVG)
+  // Trunk pivots are placed RELATIVE to this so the contact point pins for every tree.
+  const treeRegionH = junctionY - vb.y;     // distance from viewBox top to junction
+  const islandTopY = junctionY;
+  const trunkMidY  = junctionY - treeRegionH * 0.30;
+  const trunkTopY  = junctionY - treeRegionH * 0.55;
+
+  function bone(parent, cfg) {
+    return {
+      parent,
+      amp:    cfg.amp    || 0,
+      freq:   cfg.freq   || 0.2,
+      phase:  cfg.phase  || 0,
+      pivotX: cfg.pivotX,    // may be undefined — auto-computed from path bbox
+      pivotY: cfg.pivotY,
+    };
+  }
+
+  // root — global tree rhythm, anchored at trunk-island junction.
+  // Amp scales with sapling: small trees swing more dramatically as a whole.
+  const root = bone(null, {
+    amp:    trand(0.30, 0.65) * mults.root,
+    freq:   trand(0.13, 0.20) * mults.freq,
+    phase:  rng() * Math.PI * 2,
+    pivotX: cx, pivotY: islandTopY,
+  });
+
+  // trunkBase — lower trunk (always gentle, regardless of tree size — pins base)
+  const trunkBase = bone(root, {
+    amp:    trand(0.10, 0.20) * mults.trunkBase,
+    freq:   trand(0.20, 0.28) * mults.freq,
+    phase:  rng() * Math.PI * 2,
+    pivotX: cx, pivotY: islandTopY,        // same as root → trunk base point pinned
+  });
+
+  // trunkUpper — upper trunk; rotates around trunkMidY → bends on top of trunkBase
+  // Scales with sapling factor: thin saplings bend their upper trunk dramatically
+  const trunkUpper = bone(trunkBase, {
+    amp:    trand(0.40, 0.80) * mults.trunkUpper,
+    freq:   trand(0.22, 0.30) * mults.freq,
+    phase:  rng() * Math.PI * 2,
+    pivotX: cx, pivotY: trunkMidY,
+  });
+
+  // leftBranch — extends from trunk fork to the left.
+  // Pivot intentionally LEFT UNDEFINED here; Pass 1.5 will set it to the
+  // bottom-RIGHT corner of all left-branch paths' bbox (= where the branch
+  // attaches to the trunk = the actual root we want to pin).
+  const leftBranch = bone(trunkUpper, {
+    amp:    trand(0.65, 1.10) * mults.branch,
+    freq:   (0.24 + trand(-0.02, 0.02)) * mults.freq,
+    phase:  rng() * Math.PI * 2,
+  });
+
+  // rightBranch — mirror. Pivot will be set to the bottom-LEFT corner of
+  // all right-branch paths' bbox (where branch meets trunk).
+  const rightBranch = bone(trunkUpper, {
+    amp:    trand(0.65, 1.10) * mults.branch,
+    freq:   (0.30 + trand(-0.02, 0.02)) * mults.freq,
+    phase:  rng() * Math.PI * 2 + Math.PI * 0.5,
+  });
+
+  // topCanopy — central crown above the fork. Pivot LEFT UNDEFINED so Pass 1.5
+  // sets it from actual top-canopy paths' bbox bottom (more accurate hang-point).
+  const topCanopy = bone(trunkUpper, {
+    amp:    trand(0.55, 0.95) * mults.canopy,
+    freq:   trand(0.24, 0.34) * mults.freq,
+    phase:  rng() * Math.PI * 2,
+  });
+
+  return { root, trunkBase, trunkUpper, leftBranch, rightBranch, topCanopy };
+}
+
+// Returns { bone, isLeaf }:
+//   isLeaf=true  → caller creates a fresh per-path leaf bone whose parent is `bone`
+//                  (so every individual leaf path gets its own amp/freq/phase)
+//   isLeaf=false → use `bone` directly (shared structural bone for trunk / branches)
+function classifyPath(cxRel, cyInTree, skel) {
+  // cyInTree: 0 (viewBox top) → 1 (trunk-island junction). 5 vertical bands.
+  let yb;
+  if      (cyInTree < 0.30) yb = 0;       // top canopy
+  else if (cyInTree < 0.50) yb = 1;       // upper canopy
+  else if (cyInTree < 0.70) yb = 2;       // mid (branch fork)
+  else if (cyInTree < 0.87) yb = 3;       // upper trunk
+  else                      yb = 4;       // lower trunk
+
+  // 5 horizontal bands
+  let xb;
+  if      (cxRel < 0.28) xb = 0;
+  else if (cxRel < 0.42) xb = 1;
+  else if (cxRel < 0.58) xb = 2;
+  else if (cxRel < 0.72) xb = 3;
+  else                   xb = 4;
+
+  // Trunk / branch bands → shared structural bones (no per-path leaf bones)
+  if (yb === 4) {                          // lower trunk
+    if (xb === 0) return { bone: skel.leftBranch,  isLeaf: false };
+    if (xb === 4) return { bone: skel.rightBranch, isLeaf: false };
+    return            { bone: skel.trunkBase,  isLeaf: false };
+  }
+  if (yb === 3) {                          // upper trunk
+    if (xb === 0) return { bone: skel.leftBranch,  isLeaf: false };
+    if (xb === 4) return { bone: skel.rightBranch, isLeaf: false };
+    return            { bone: skel.trunkUpper, isLeaf: false };
+  }
+  if (yb === 2) {                          // mid: branches in full force
+    if (xb <= 1) return { bone: skel.leftBranch,  isLeaf: false };
+    if (xb >= 3) return { bone: skel.rightBranch, isLeaf: false };
+    return           { bone: skel.trunkUpper, isLeaf: false };
+  }
+
+  // Canopy bands (yb=0, 1) → per-path leaf bone hung off a structural bone.
+  //   • side leaves (xb=0,1) hang off leftBranch — get their own leaf bone wobble
+  //   • side leaves (xb=3,4) hang off rightBranch — get their own leaf bone wobble
+  //   • CENTER leaves/flowers (xb=2) → bind DIRECTLY to trunkUpper (NO leaf bone).
+  //     This is critical for saplings (trees 2-8) where the central flower at the
+  //     trunk apex IS the entire visible canopy. With a leaf bone, the flower would
+  //     wobble at its own freq/amp/phase, looking like an independent translation
+  //     detached from the trunk. Without a leaf bone, the flower inherits exactly
+  //     the trunk's chain (root → trunkBase → trunkUpper) and stays mathematically
+  //     locked to the trunk apex — they swing as one. For full trees (9-12), the
+  //     centered canopy block also stays solid; side leaves on branches still get
+  //     individual wobble for organic motion.
+  if (xb === 2) {
+    return { bone: skel.trunkUpper, isLeaf: false };
+  }
+  let parent;
+  if      (xb <= 1) parent = skel.leftBranch;
+  else              parent = skel.rightBranch;
+  return { bone: parent, isLeaf: true };
+}
+
+function setupNaturalSway(treeN) {
+  const sway = swayGroups[treeN];
+  const svg = sway.closest('svg');
+  const vb = svg.viewBox.baseVal;
+  const W = vb.width, H = vb.height;
+
+  // Per-tree deterministic RNG
+  const treeRng = (function(){
+    let s = (treeN * 1664525 + 1013904223) >>> 0;
+    return function() {
+      s = (s + 0x6D2B79F5) >>> 0;
+      let t = Math.imul(s ^ s >>> 15, 1 | s);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  })();
+  const trand = (lo, hi) => lo + (hi - lo) * treeRng();
+
+  // Size-based scaling — small trees bend more in their UPPER trunk / branches.
+  // trunkBase amp stays constant (it's the pin); trunkUpper / branch / canopy
+  // scale up for saplings; root also scales up so the whole sprout's unified
+  // swing is more visible on small trees (the user wants tree 1 to look livelier).
+  const sizeRatio = H / REF_TREE_HEIGHT;
+  const sapling   = Math.max(0, 1 - sizeRatio);
+  const mults = {
+    root:       1 + sapling * 1.0,    // 1.0 → 1.57 — sprouts swing as a whole more
+    trunkBase:  1.0,                  // CONSTANT — keep base motion tiny for all sizes
+    trunkUpper: 1 + sapling * 2.5,    // 1.0 → 2.43
+    branch:     1 + sapling * 1.0,    // 1.0 → 1.57
+    canopy:     1 + sapling * 0.6,    // 1.0 → 1.34
+    freq:       1 + sapling * 0.4,    // 1.0 → 1.23
+  };
+
+  // ---- Pre-scan: find the actual trunk-island junction Y for THIS tree ----
+  // Strategy: read the y attribute of the <filter id="filter0_n_*"> element
+  // directly. Figma sets the filter region tightly around the dirt-mound shape,
+  // so filter.y = top of mound = the trunk-island junction to pin absolutely.
+  // Reading the attribute is more reliable than getBBox() on a filtered <g>.
+  let junctionY = vb.y + H * 0.60;  // fallback
+  const filterEls = svg.querySelectorAll('filter[id^="filter0_n_"]');
+  if (filterEls.length > 0) {
+    const yStr = filterEls[0].getAttribute('y');
+    const yNum = parseFloat(yStr);
+    if (!isNaN(yNum)) junctionY = yNum;
+  }
+  // Region above junction = the part of the SVG that should sway
+  const treeRegionH = Math.max(50, junctionY - vb.y);
+
+  // Build the skeleton with the measured junction
+  const skel = buildSkeleton(vb, trand, treeRng, mults, junctionY);
+
+  // Pass 1: scan kids, classify each path. Canopy paths get a fresh per-path
+  // leaf bone (so every leaf has unique amp/freq/phase). Trunk/branch paths
+  // share the corresponding structural bone (so branches act as one unit).
+  //
+  // Special handling: <g class="trunk-merged"> (tree-8) merges left branch, right
+  // branch, center trunk, and detail into ONE group. Treating that whole group
+  // as one bone makes the upper canopy rigidly rotate together (the user's
+  // complaint: "整体摇的有点太死了"). Solution: when we encounter such a group,
+  // descend into it and classify each child path individually so each branch
+  // rotates around its own pivot. Other groups (per-cluster filter wrappers)
+  // are kept as single units so clustered petals stay coherent.
+  const animElements = [];
+  for (const el of Array.from(sway.children)) {
+    const tag = el.tagName.toLowerCase();
+    if (tag === 'defs') continue;
+    // Walk into split-eligible groups (currently: trunk-merged class)
+    if (tag === 'g' && el.classList && el.classList.contains('trunk-merged')) {
+      for (const child of Array.from(el.children)) {
+        if (child.tagName.toLowerCase() === 'path') animElements.push(child);
+      }
+      continue;
+    }
+    animElements.push(el);
+  }
+
+  const plan = [];
+  let leafCounter = 0;
+  for (const el of animElements) {
+    let bb;
+    try { bb = el.getBBox(); } catch (e) {
+      plan.push({ el, bone: null });
+      continue;
+    }
+    const cxRel = (bb.x + bb.width / 2 - vb.x) / W;
+    const cyInTree = (bb.y + bb.height / 2 - vb.y) / treeRegionH;
+    if (cyInTree >= 1.0) {                 // island region — no bone
+      plan.push({ el, bone: null });
+      continue;
+    }
+    const result = classifyPath(cxRel, cyInTree, skel);
+    let target;
+    if (result.isLeaf) {
+      // Per-path leaf bone: unique amp/freq/phase, parented to the matching branch
+      target = {
+        parent: result.bone,
+        amp:    trand(0.40, 0.95) * mults.canopy,
+        freq:   trand(0.28, 0.45) * mults.freq,
+        phase:  treeRng() * Math.PI * 2,
+        // bbox seeded from this single path so Pass 1.5 derives a precise pivot
+        _minX:  bb.x,
+        _maxX:  bb.x + bb.width,
+        _minY:  bb.y,
+        _maxY:  bb.y + bb.height,
+      };
+      skel['leaf_' + (leafCounter++)] = target;
+    } else {
+      target = result.bone;
+      // Accumulate bbox into the shared bone for pivot derivation
+      if (target._minX === undefined) {
+        target._minX = bb.x;          target._maxX = bb.x + bb.width;
+        target._minY = bb.y;          target._maxY = bb.y + bb.height;
+      } else {
+        target._minX = Math.min(target._minX, bb.x);
+        target._maxX = Math.max(target._maxX, bb.x + bb.width);
+        target._minY = Math.min(target._minY, bb.y);
+        target._maxY = Math.max(target._maxY, bb.y + bb.height);
+      }
+    }
+    plan.push({ el, bone: target });
+  }
+
+  // Pass 1.5: derive pivots from actual path bboxes.
+  //   • root, trunkBase  → kept hand-set at (cx, junctionY) — absolute anchor
+  //   • leftBranch       → bottom-RIGHT corner of its paths (= trunk attachment)
+  //   • rightBranch      → bottom-LEFT  corner of its paths (= trunk attachment)
+  //   • trunkUpper, topCanopy, leaf bones → bbox bottom-center, BUT clamped to
+  //     not go below junctionY — this means: if a path extends past the junction
+  //     (typical for saplings whose stem dips into the dirt mound), the pivot is
+  //     pulled UP to the junction so the visible junction point stays pinned.
+  for (const name in skel) {
+    const b = skel[name];
+    if (name === 'root' || name === 'trunkBase') continue;   // hand-set anchor
+    if (name === 'leftBranch' && b._minX !== undefined) {
+      b.pivotX = b._maxX;
+      b.pivotY = Math.min(b._maxY, junctionY);
+      continue;
+    }
+    if (name === 'rightBranch' && b._minX !== undefined) {
+      b.pivotX = b._minX;
+      b.pivotY = Math.min(b._maxY, junctionY);
+      continue;
+    }
+    if (b._minX !== undefined) {
+      b.pivotX = (b._minX + b._maxX) / 2;
+      b.pivotY = Math.min(b._maxY, junctionY);
+    } else if (b.parent) {
+      b.pivotX = b.parent.pivotX;
+      b.pivotY = b.parent.pivotY;
+    } else {
+      b.pivotX = vb.x + W / 2;
+      b.pivotY = junctionY;
+    }
+  }
+
+  // Pass 2: wrap each non-island path in its own <g> in place (DOM order safe)
+  // Use el.parentNode (not sway) so paths nested inside trunk-merged stay
+  // correctly placed; the bone wrapper goes around the path within its own
+  // parent group, preserving any inherited filter / class.
+  const allBones = Object.values(skel);
+  const paths = [];
+  for (const item of plan) {
+    if (!item.bone) continue;
+    const wrapper = document.createElementNS(SVG_NS_LOC, 'g');
+    wrapper.classList.add('bone');
+    const parent = item.el.parentNode;
+    parent.insertBefore(wrapper, item.el);
+    wrapper.appendChild(item.el);
+    // Pre-compute the chain (root → leaf) so per-frame just reads angles
+    const chain = [];
+    for (let b = item.bone; b; b = b.parent) chain.unshift(b);
+    paths.push({ wrapper, chain });
+  }
+
+  TREE_BONES[treeN] = { skel, allBones, paths };
+}
+
+function boneRotation(p, tSec) {
+  const w = 2 * Math.PI * p.freq;
+  const base    = Math.sin(w * tSec + p.phase);
+  const flutter = 0.3 * Math.sin(w * 2.3 * tSec + p.phase * 1.7);
+  return p.amp * (base + flutter);
 }
 
 // ============================================================
@@ -468,12 +811,38 @@ function refineNoise() {
 }
 
 // ============================================================
-// Sway tick — rotate tree-sway (the trunk/canopy) but NOT the island
+// Sway tick — rotate tree-sway (the trunk/canopy) but NOT the island.
+// For natural-sway trees: also rotate each cluster bone independently.
 // ============================================================
 function applySway(tSec) {
   for (const t of TREES) {
     const stage = stages[t.n];
     if (!stage.classList.contains('active')) continue;
+
+    const data = TREE_BONES[t.n];
+    if (data) {
+      // ---- TRUE skeletal sway: walk the bone chain root→leaf, compose all
+      // rotations into a single SVG transform list per path. Mathematically
+      // identical to nesting that path inside <g> bones, but DOM stays flat.
+      // Compute each bone's instantaneous rotation once
+      for (const b of data.allBones) {
+        b.curRot = SWAY_ON ? boneRotation(b, tSec) : 0;
+      }
+      // Each path's wrapper transform = rotate(root) rotate(child) ... rotate(leaf)
+      // SVG processes right-to-left → leaf rotates first in path's frame,
+      // then each ancestor rotates that result. Chain-level inheritance.
+      for (const p of data.paths) {
+        let s = '';
+        for (const b of p.chain) {
+          if (b.amp === 0) continue;
+          s += 'rotate(' + b.curRot.toFixed(3) + ' ' + b.pivotX.toFixed(2) + ' ' + b.pivotY.toFixed(2) + ') ';
+        }
+        p.wrapper.setAttribute('transform', s);
+      }
+      continue;
+    }
+
+    // ---- simple sway path (existing behavior, trees 1-11 for now) ----
     const p = SWAY_PARAMS[t.n];
     const sway = swayGroups[t.n];
 
@@ -483,14 +852,10 @@ function applySway(tSec) {
       const flutter = 0.25 * Math.sin(w * 2.4 * tSec + p.phase * 1.7);
       baseRot = p.amp * (Math.sin(w * tSec + p.phase) + flutter);
     }
-
-    // Apply base rotation to tree-sway (NOT sway-group) so the island stays put
     const treeSway = sway.querySelector(':scope > g.tree-sway');
     if (treeSway) {
       treeSway.setAttribute('transform', `rotate(${baseRot.toFixed(3)} ${p.pivotX} ${p.pivotY})`);
     }
-
-    // Additional rotation for canopy (trees 4+)
     const canopy = treeSway && treeSway.querySelector(':scope > g.canopy-sway');
     if (canopy) {
       let canopyRot = 0;
